@@ -580,7 +580,7 @@ assert torch.cuda.is_available()
 args = Hyperparameters()
 # TODO: Not hard coded
 if True or os.environ.get("GPU") == "A100":
-    factor = int(2 * 8 // world_size)
+    factor = int(4)
     args.train_seq_len //= factor
     args.val_seq_len //= factor
 
@@ -709,9 +709,7 @@ def get_window_size_blocks(step: int):
     return get_window_size_blocks_helper(window_size)
 
 
-print("Compiling model")
 model: nn.Module = torch.compile(model, dynamic=False)
-print("Model compiled")
 
 ########################################
 #        Training and validation       #
@@ -737,7 +735,6 @@ for step in range(train_steps + 1):
         and step != 0
     ):
         # stop the clock
-        print("Validation step")
         torch.cuda.synchronize()
         training_time_ms += 1000 * (time.perf_counter() - t0)
         model.eval()
@@ -750,7 +747,6 @@ for step in range(train_steps + 1):
         val_loss = 0
         with torch.no_grad():
             for _ in range(val_steps):
-                print(f"Val {_}/{val_steps}")
                 inputs, targets = next(val_loader)
                 val_loss += model(inputs, targets, get_window_size_blocks(step))
         val_loss /= val_steps
@@ -779,9 +775,7 @@ for step in range(train_steps + 1):
         break
 
     # --------------- TRAINING SECTION -----------------
-    print("Training step")
     inputs, targets = next(train_loader)
-    print("Loaded inputs and targets")
     model(inputs, targets, get_window_size_blocks(step)).backward()
     for param in model.parameters():
         dist.all_reduce(param.grad, op=dist.ReduceOp.AVG)
@@ -798,11 +792,11 @@ for step in range(train_steps + 1):
     # null the gradients
     model.zero_grad(set_to_none=True)
     # logging
-    approx_training_time_ms = training_time_ms + 1000 * (
-        time.perf_counter() - t0
+    approx_training_time_s = (
+        training_time_ms + 1000 * (time.perf_counter() - t0) / 1000
     )
     print0(
-        f"step:{step+1}/{train_steps} train_time:{approx_training_time_ms:.0f}ms step_avg:{approx_training_time_ms/(step + 1):.2f}ms",
+        f"step:{step+1}/{train_steps} train_time:{approx_training_time_s:.1f}s step_avg:{approx_training_time_s/(step + 1):.2f}s",
         console=True,
     )
 
