@@ -458,7 +458,7 @@ class GPT(nn.Module):
             short_bm,
             short_bm,
             short_bm,
-            long_bm,
+            long_bm,  # GPT-Medium
             short_bm,
             short_bm,
             long_bm,
@@ -636,7 +636,7 @@ print0("=" * 100)
 ########################################
 
 model: nn.Module = GPT(
-    vocab_size=args.vocab_size,
+    vocab_size=args.vocab_size,  # GPT-Medium
     num_layers=12,
     num_heads=6,
     model_dim=768,
@@ -659,7 +659,7 @@ scalar_params = [p for p in model.parameters() if p.ndim < 2]
 head_params = [model.lm_head.weight]
 
 # init the optimizer(s)
-adam_params = [
+adam_params = [  # GPT-Medium
     dict(params=head_params, lr=0.22),
     dict(params=embed_params, lr=0.6),
     dict(params=scalar_params, lr=0.04),

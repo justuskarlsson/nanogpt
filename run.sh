@@ -1,1 +1,1 @@
-OMP_NUM_THREADS=8 torchrun --standalone --nproc_per_node=4 train_gpt.py
+OMP_NUM_THREADS=8 torchrun --standalone --nproc_per_node=4 pre_fp8.py
