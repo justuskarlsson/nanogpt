@@ -9,6 +9,9 @@ import glob
 import subprocess
 import contextlib
 from dataclasses import dataclass
+import torch._dynamo
+
+torch._dynamo.config.optimize_ddp = False
 
 import torch
 
@@ -345,9 +348,11 @@ class GPT(nn.Module):
 
         def dense_to_ordered(dense_mask):
             num_blocks = dense_mask.sum(dim=-1, dtype=torch.int32)
-            indices = dense_mask.argsort(
-                dim=-1, descending=True, stable=True
-            ).to(torch.int32)
+            indices = (
+                dense_mask.int()
+                .argsort(dim=-1, descending=True, stable=True)
+                .to(torch.int32)
+            )
             return (
                 num_blocks[None, None].contiguous(),
                 indices[None, None].contiguous(),
@@ -492,9 +497,9 @@ class Hyperparameters:
     train_bin = "data/fineweb10B/fineweb_train_*.bin"  # input .bin to train on
     val_bin = "data/fineweb10B/fineweb_val_*.bin"  # input .bin to eval validation loss on
     # optimization
-    batch_size = 8 * 64 * 1024  # batch size in tokens
-    max_device_batch_size = 64 * 1024  # batch size per device in tokens
-    num_iterations = 1390  # number of iterations to run
+    batch_size = 4 * 48 * 1024  # batch size in tokens
+    max_device_batch_size = 48 * 1024  # batch size per device in tokens
+    num_iterations = 2 * 1390  # number of iterations to run
     cooldown_frac = (
         0.4  # fraction of training spent cooling down the learning rate
     )
@@ -572,7 +577,7 @@ if args.bf16_embeds:
     for m in model.modules():
         if isinstance(m, nn.Embedding):
             m.bfloat16()
-model = torch.compile(model)
+model = torch.compile(model, dynamic=False)
 ddp_model = DDP(
     model,
     device_ids=[local_rank],
