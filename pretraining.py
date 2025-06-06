@@ -11,10 +11,6 @@ import dotenv
 # Load environment variables first
 dotenv.load_dotenv()
 
-# Read the code of this file for logging
-with open(sys.argv[0]) as f:
-    code = f.read()
-
 # Set PyTorch CUDA allocation configuration
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
@@ -32,12 +28,11 @@ from model import (
     create_model,
 )
 
-# Check if we're training
-is_train = len(sys.argv) == 1
+import torch._dynamo
 
-if is_train:
-    # Prevent a bug on some systems
-    torch.empty(1, device="cuda", requires_grad=True).backward()
+torch._dynamo.config.suppress_errors = True
+
+torch.empty(1, device="cuda", requires_grad=True).backward()
 
 # Initialize hyperparameters
 args = Hyperparameters()
@@ -47,13 +42,7 @@ args.val_loss_every = 250  # Less frequent validation for the larger model
 
 
 def main():
-    if not is_train:
-        print(
-            "This script is for pretraining. Use other scripts for eval/chat."
-        )
-        return
 
-    # Setup distributed training
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     assert torch.cuda.is_available()
@@ -69,7 +58,7 @@ def main():
     # Begin logging
     logfile = None
     if master_process:
-        run_id = uuid.uuid4()
+        run_id = time.strftime("%Y-%m-%d_%H-%M-%S")
         os.makedirs("logs", exist_ok=True)
         logfile = f"logs/{run_id}.txt"
         print(logfile)
@@ -81,9 +70,6 @@ def main():
                     print(s)
                 print(s, file=f)
 
-    # Begin by printing this file (the Python code)
-    print0(code)
-    print0("=" * 100)
     # Log information about the hardware/software environment
     print0(f"Running Python {sys.version}")
     print0(
@@ -127,7 +113,7 @@ def main():
         return get_lr(step, args.num_iterations, args.cooldown_frac)
 
     # Compile model
-    model = torch.compile(model, dynamic=False)
+    # model = torch.compile(model, dynamic=False)
 
     ########################################
     #        Training and validation       #
@@ -197,7 +183,6 @@ def main():
             if master_process and args.save_checkpoint:
                 log = dict(
                     step=step,
-                    code=code,
                     model=model.state_dict(),
                     optimizers=[opt.state_dict() for opt in optimizers],
                 )

@@ -166,25 +166,8 @@ class CastedLinear(nn.Linear):
         self,
         in_features: int,
         out_features: int,
-        use_fp8=False,
-        x_s=1.0,
-        w_s=1.0,
-        grad_s=1.0,
     ):
         super().__init__(in_features, out_features, bias=False)
-        # TODO: Set to false for A100
-        self.use_fp8 = False
-        self.x_s = x_s
-        self.w_s = w_s
-        self.grad_s = grad_s
-
-    def reset_parameters(self) -> None:
-        std = 0.5 * (
-            self.in_features**-0.5
-        )  # 0.5 is a bit better than the default 1/sqrt(3)
-        bound = (3**0.5) * std
-        with torch.no_grad():
-            self.weight.uniform_(-bound, bound)
 
     def forward(self, x: Tensor):
         return F.linear(x, self.weight.type_as(x))
@@ -345,10 +328,6 @@ class GPT(nn.Module):
         self.lm_head = CastedLinear(
             model_dim,
             next_multiple_of_n(vocab_size, n=128),
-            use_fp8=True,
-            x_s=(model_dim**0.5) / 448,
-            w_s=24 / 448,
-            grad_s=1 / 448,
         )
         self.lm_head.weight.detach().zero_()  # @Grad62304977
         # Add learnable skip connection weights for decoder layers
@@ -434,6 +413,7 @@ class GPT(nn.Module):
             + [ve[0], ve[1], ve[2]]
             + [None] * 6
             + [ve[0], ve[1], ve[2]]
+            + [None] * 3  # Add 3 more None values to reach 24 elements
         )
         assert len(ve) == len(self.blocks)
 
@@ -558,14 +538,10 @@ class Hyperparameters:
     )
     val_files = "data/fineweb10B/fineweb_val_*.bin"  # input .bin to eval validation loss on
     val_tokens = 10485760  # how many tokens of validation data? it's important to keep this fixed for consistent comparisons
-    train_seq_len = (
-        12 * 1024
-    )  # FlexAttention sequence length (will be divided by factor in pretraining.py)
-    val_seq_len = (
-        1 * 64 * 1024
-    )  # FlexAttention sequence length for validation (will be divided by factor in pretraining.py)
+    train_seq_len = 2 * 1024
+    val_seq_len = 1 * 8 * 1024
     # optimization
-    num_iterations = 4000  # number of iterations to run
+    num_iterations = 10000  # number of iterations to run
     cooldown_frac = (
         0.4  # fraction of training spent cooling down the learning rate
     )
@@ -573,7 +549,7 @@ class Hyperparameters:
     vocab_size = 50257
     # evaluation and logging
     val_loss_every = (
-        125  # every how many steps to evaluate val loss? 0 for only at the end
+        250  # every how many steps to evaluate val loss? 0 for only at the end
     )
     save_checkpoint = True
 
