@@ -1,0 +1,50 @@
+Model loaded from checkpoint
+Top 20 tokens for prompt: 'Human: What is the capital of France?
+Assistant:'
+--------------------------------------------------
+Token	ID	Logit	Prob	Text
+--------------------------------------------------
+1	383	25.46	0.1983	' The'
+2	4881	25.01	0.1267	' France'
+3	262	24.65	0.0886	' the'
+4	314	24.58	0.0825	' I'
+5	1867	24.49	0.0753	' What'
+6	6342	24.40	0.0691	' Paris'
+7	4141	24.09	0.0507	' French'
+8	632	23.86	0.0400	' It'
+9	775	23.79	0.0376	' We'
+10	317	23.76	0.0363	' A'
+11	366	23.61	0.0312	' "'
+12	770	23.32	0.0233	' This'
+13	554	23.29	0.0227	' In'
+14	564	23.26	0.0220	' �'
+15	3363	23.26	0.0220	' Yes'
+16	1374	23.04	0.0176	' How'
+17	921	23.00	0.0171	' You'
+18	1081	22.81	0.0141	' As'
+19	352	22.74	0.0131	' 1'
+20	1318	22.64	0.0119	' There'
+
+Probability distribution stats:
+Max prob: 0.080263
+Min prob: 0.000000
+Mean prob: 0.000020
+Entropy: 9.16 bits
+
+Generated text:
+Human: What is the capital of France?
+Assistant: The city of Paris is Paris.
+The capital of France is Paris. The city of Paris is Paris. The city of Paris is Paris.
+
+
+Token IDs and their decoded values:
+ID: 383, Text: ' The'
+ID: 1748, Text: ' city'
+ID: 286, Text: ' of'
+ID: 6342, Text: ' Paris'
+ID: 318, Text: ' is'
+ID: 6342, Text: ' Paris'
+ID: 13, Text: '.'
+ID: 198, Text: '\n'
+ID: 464, Text: 'The'
+ID: 3139, Text: ' capital'
