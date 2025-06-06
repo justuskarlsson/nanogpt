@@ -219,12 +219,12 @@ class Rotary(nn.Module):
 
 class CausalSelfAttention(nn.Module):
     def __init__(
-        self, dim: int, num_heads: int, max_seq_len: int, head_dim=128
+        self, dim: int, num_heads: int, max_seq_len: int, head_dim=None
     ):
         super().__init__()
         self.num_heads = num_heads
-        self.head_dim = head_dim
-        hdim = num_heads * head_dim
+        self.head_dim = head_dim if head_dim is not None else dim // num_heads
+        hdim = num_heads * self.head_dim
         std = 0.5 * (dim**-0.5)
         bound = (3**0.5) * std  # improved init scale by @YouJiacheng
         # merged QKV weights: suggested by many, implemented by @fernbear.bsky.social, and further improved by @YouJiacheng
@@ -233,7 +233,7 @@ class CausalSelfAttention(nn.Module):
             torch.empty(3, hdim, dim).uniform_(-bound, bound)
         )
         self.lambdas = nn.Parameter(torch.tensor([0.5, 0.5]))
-        self.rotary = Rotary(head_dim, max_seq_len)
+        self.rotary = Rotary(self.head_dim, max_seq_len)
         self.c_proj = CastedLinear(hdim, dim)
         self.c_proj.weight.detach().zero_()  # zero init suggested by @Grad62304977
 
@@ -427,10 +427,12 @@ class GPT(nn.Module):
         assert input_seq.ndim == 1
 
         ve = [value_embed(input_seq) for value_embed in self.value_embeds]
-        # 012 ... 012 structure on token value embeddings by @YouJiacheng, improved on @leloykun's U-net structure
+        # Extend pattern for 24 layers: 012 at beginning, middle, and end
         ve = (
             [ve[0], ve[1], ve[2]]
-            + [None] * (len(self.blocks) - 6)
+            + [None] * 6
+            + [ve[0], ve[1], ve[2]]
+            + [None] * 6
             + [ve[0], ve[1], ve[2]]
         )
         assert len(ve) == len(self.blocks)
@@ -443,7 +445,20 @@ class GPT(nn.Module):
             short_bm,
             short_bm,
             short_bm,
-            long_bm,  # GPT-Medium
+            long_bm,  # Initial set of masks
+            short_bm,
+            short_bm,
+            long_bm,
+            short_bm,
+            short_bm,
+            short_bm,
+            long_bm,
+            # Additional masks for the extra layers
+            long_bm,
+            short_bm,
+            short_bm,
+            short_bm,
+            long_bm,
             short_bm,
             short_bm,
             long_bm,
@@ -543,8 +558,12 @@ class Hyperparameters:
     )
     val_files = "data/fineweb10B/fineweb_val_*.bin"  # input .bin to eval validation loss on
     val_tokens = 10485760  # how many tokens of validation data? it's important to keep this fixed for consistent comparisons
-    train_seq_len = 48 * 1024  # FlexAttention sequence length
-    val_seq_len = 4 * 64 * 1024  # FlexAttention sequence length for validation
+    train_seq_len = (
+        12 * 1024
+    )  # FlexAttention sequence length (will be divided by factor in pretraining.py)
+    val_seq_len = (
+        1 * 64 * 1024
+    )  # FlexAttention sequence length for validation (will be divided by factor in pretraining.py)
     # optimization
     num_iterations = 4000  # number of iterations to run
     cooldown_frac = (
@@ -570,19 +589,19 @@ def get_window_size_blocks_helper(window_size: int):
 def get_window_size_blocks(step: int, num_iterations: int):
     x = step / num_iterations  # progress in training
     assert 0 <= x <= 1
-    # Linearly increase the block-wise sliding window size over training 128 -> 1792
-    # increase by @fernbear.bsky.social; block-wise by @YouJiacheng
-    window_size = next_multiple_of_n(1728 * x, n=128)
+    # Linearly increase the block-wise sliding window size over training 128 -> 1024
+    # Reduced from 1728 to 1024 to save memory for larger model
+    window_size = next_multiple_of_n(1024 * x, n=128)
     return get_window_size_blocks_helper(window_size)
 
 
 def create_model(vocab_size: int = 50257, max_seq_len: int = 256 * 1024) -> GPT:
-    """Create a GPT-Medium model with default parameters."""
+    """Create a GPT model with ~1B parameters."""
     return GPT(
         vocab_size=vocab_size,
-        num_layers=12,
-        num_heads=6,
-        model_dim=768,
+        num_layers=24,
+        num_heads=16,
+        model_dim=2048,
         max_seq_len=max_seq_len,
     )
 
@@ -600,10 +619,10 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     head_params = [model.lm_head.weight]
 
     # init the optimizer(s)
-    adam_params = [  # GPT-Medium
-        dict(params=head_params, lr=0.22),
-        dict(params=embed_params, lr=0.6),
-        dict(params=scalar_params, lr=0.04),
+    adam_params = [  # 1B parameter model
+        dict(params=head_params, lr=0.1),  # Reduced from 0.22
+        dict(params=embed_params, lr=0.3),  # Reduced from 0.6
+        dict(params=scalar_params, lr=0.02),  # Reduced from 0.04
     ]
     # small adam epsilon by @YouJiacheng. this is an alternate method of fixing the world_size dependence
     # discovered by @fernbear.bsky.social https://x.com/hi_tysam/status/1879692937589875094
@@ -612,7 +631,7 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     )
     optimizer2 = Muon(
         hidden_matrix_params,
-        lr=0.05,
+        lr=0.025,  # Reduced from 0.05
         momentum=0.95,
         rank=rank,
         world_size=world_size,
