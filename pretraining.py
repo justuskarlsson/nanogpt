@@ -11,11 +11,13 @@ import dotenv
 # Load environment variables first
 dotenv.load_dotenv()
 
-# Set PyTorch CUDA allocation configuration
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+# (Doesn't work on 40GB GPUs) Set PyTorch CUDA allocation configuration
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 import torch
 import torch.distributed as dist
+import torch.nn as nn
+
 
 # Import all shared components from model.py
 from model import (
@@ -28,8 +30,8 @@ from model import (
     create_model,
 )
 
-# import torch._dynamo
-# torch._dynamo.config.suppress_errors = True
+# torch._inductor.config.coordinate_descent_tuning = True  # we have banned this flag for new records because it causes compilation to take 30min
+torch._dynamo.config.compiled_autograd = True
 
 torch.empty(1, device="cuda", requires_grad=True).backward()
 
@@ -103,10 +105,15 @@ def main():
 
     # Setup optimizers
     optimizers = setup_optimizers(model, rank, world_size)
+    optimizer2 = optimizers[1]
 
-    # Learning rate schedule
-    def get_lr_for_step(step: int):
-        return get_lr(step, args.num_iterations, args.cooldown_frac)
+    def opt_params(opt: torch.optim.Optimizer) -> list[nn.Parameter]:
+        return [p for group in opt.param_groups for p in group["params"]]
+
+    opt2params = {opt: opt_params(opt) for opt in optimizers}
+    for opt in optimizers:
+        for group in opt.param_groups:
+            group["initial_lr"] = group["lr"]
 
     # Compile model
     model = torch.compile(model, dynamic=False)
@@ -171,7 +178,7 @@ def main():
             torch.cuda.synchronize()
             t0 = time.perf_counter()
 
-        if last_step:
+        if last_step or (step % 10000 == 0 and step != 0):
             if master_process and args.save_checkpoint:
                 log = dict(
                     step=step,
@@ -181,7 +188,8 @@ def main():
                 os.makedirs(f"logs/{run_id}", exist_ok=True)
                 torch.save(log, f"logs/{run_id}/state_step{step:06d}.pt")
             # The last step only has the validation loop, so break to avoid training
-            break
+            if last_step:
+                break
 
         # --------------- TRAINING SECTION -----------------
         inputs, targets = next(train_loader)
@@ -189,23 +197,28 @@ def main():
             inputs, targets, get_window_size_blocks(step, args.num_iterations)
         ).backward()
 
-        for param in model.parameters():
-            dist.all_reduce(param.grad, op=dist.ReduceOp.AVG)
-
-        # Set optimization hyperparameters
+        opt2futures = {
+            opt: [
+                dist.all_reduce(
+                    p.grad, op=dist.ReduceOp.AVG, async_op=True
+                ).get_future()
+                for p in params
+            ]
+            for opt, params in opt2params.items()
+        }
+        # set optimization hyperparameters
         for opt in optimizers:
             for group in opt.param_groups:
-                group["lr"] = group["initial_lr"] * get_lr_for_step(step)
-
-        # Momentum warmup for Muon optimizer
-        for group in optimizers[1].param_groups:  # optimizers[1] is Muon
-            frac = min(step / 300, 1)
+                group["lr"] = group["initial_lr"] * get_lr(
+                    step, args.num_iterations, args.cooldown_frac
+                )
+        for group in optimizer2.param_groups:
+            frac = min(step / 300, 1)  # momentum warmup for muon
             group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
-
-        # Step the optimizers
+        # step the optimizers
         for opt in optimizers:
+            torch.futures.collect_all(opt2futures[opt]).wait()
             opt.step()
-
         # Null the gradients
         model.zero_grad(set_to_none=True)
 
