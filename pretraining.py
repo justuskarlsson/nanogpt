@@ -128,7 +128,7 @@ def main():
     training_time_ms = 0
 
     # Start the clock
-    torch.cuda.synchronize()
+    dist.barrier()
     t0 = time.perf_counter()
 
     # Begin training
@@ -145,7 +145,7 @@ def main():
             and step != 0
         ):
             # Stop the clock
-            torch.cuda.synchronize()
+            dist.barrier()
             training_time_ms += 1000 * (time.perf_counter() - t0)
             model.eval()
             val_batch_size = world_size * args.val_seq_len
@@ -175,7 +175,7 @@ def main():
             )
             model.train()
             # Start the clock again
-            torch.cuda.synchronize()
+            dist.barrier()
             t0 = time.perf_counter()
 
         if last_step or (step % 10000 == 0 and step != 0):

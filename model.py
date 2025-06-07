@@ -34,7 +34,6 @@ def zeropower_via_newtonschulz5(G: Tensor) -> Tensor:
     assert (
         G.ndim >= 2
     )  # batched Muon implementation by @scottjmaddox, and put into practice in the record by @YouJiacheng
-    a, b, c = (3.4445, -4.7750, 2.0315)
     X = G.bfloat16()
     if G.size(-2) > G.size(-1):
         X = X.mT
@@ -712,8 +711,7 @@ def get_lr(step: int, num_iterations: int, cooldown_frac: float = 0.4):
     if x < 1 - cooldown_frac:
         return 1.0
     else:
-        w = (1 - x) / cooldown_frac
-        return w * 1.0 + (1 - w) * 0.1
+        return (1 - x) / cooldown_frac
 
 
 def load_checkpoint(model: GPT, checkpoint_path: str):
