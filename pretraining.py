@@ -28,17 +28,13 @@ from model import (
     create_model,
 )
 
-import torch._dynamo
-
-torch._dynamo.config.suppress_errors = True
+# import torch._dynamo
+# torch._dynamo.config.suppress_errors = True
 
 torch.empty(1, device="cuda", requires_grad=True).backward()
 
 # Initialize hyperparameters
 args = Hyperparameters()
-
-# Update validation frequency for the larger model
-args.val_loss_every = 250  # Less frequent validation for the larger model
 
 
 def main():
@@ -113,14 +109,14 @@ def main():
         return get_lr(step, args.num_iterations, args.cooldown_frac)
 
     # Compile model
-    # model = torch.compile(model, dynamic=False)
+    model = torch.compile(model, dynamic=False)
 
     ########################################
     #        Training and validation       #
     ########################################
 
     train_loader = distributed_data_generator(
-        args.train_files, world_size * args.train_seq_len, rank, world_size
+        world_size * args.train_seq_len, rank, world_size, is_train=True
     )
     training_time_ms = 0
 
@@ -131,10 +127,6 @@ def main():
     # Begin training
     train_steps = args.num_iterations
     print(f"Starting training for {train_steps} steps")
-
-    # For 1B parameter model - implement gradient accumulation
-    grad_accumulation_steps = 2  # Accumulate gradients over 2 steps
-    model.zero_grad(set_to_none=True)
 
     for step in range(train_steps + 1):
         last_step = step == train_steps
@@ -153,7 +145,7 @@ def main():
             assert args.val_tokens % val_batch_size == 0
             val_steps = int(args.val_tokens // val_batch_size)
             val_loader = distributed_data_generator(
-                args.val_files, val_batch_size, rank, world_size
+                val_batch_size, rank, world_size, is_train=False
             )
             val_loss = 0
             with torch.no_grad():
@@ -193,35 +185,29 @@ def main():
 
         # --------------- TRAINING SECTION -----------------
         inputs, targets = next(train_loader)
-        loss = model(
+        model(
             inputs, targets, get_window_size_blocks(step, args.num_iterations)
-        )
+        ).backward()
 
-        # Scale loss for gradient accumulation
-        (loss / grad_accumulation_steps).backward()
+        for param in model.parameters():
+            dist.all_reduce(param.grad, op=dist.ReduceOp.AVG)
 
-        # Only update weights after accumulation steps
-        if (step + 1) % grad_accumulation_steps == 0:
-            for param in model.parameters():
-                if param.grad is not None:
-                    dist.all_reduce(param.grad, op=dist.ReduceOp.AVG)
+        # Set optimization hyperparameters
+        for opt in optimizers:
+            for group in opt.param_groups:
+                group["lr"] = group["initial_lr"] * get_lr_for_step(step)
 
-            # Set optimization hyperparameters
-            for opt in optimizers:
-                for group in opt.param_groups:
-                    group["lr"] = group["initial_lr"] * get_lr_for_step(step)
+        # Momentum warmup for Muon optimizer
+        for group in optimizers[1].param_groups:  # optimizers[1] is Muon
+            frac = min(step / 300, 1)
+            group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
 
-            # Momentum warmup for Muon optimizer
-            for group in optimizers[1].param_groups:  # optimizers[1] is Muon
-                frac = min(step / 300, 1)
-                group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
+        # Step the optimizers
+        for opt in optimizers:
+            opt.step()
 
-            # Step the optimizers
-            for opt in optimizers:
-                opt.step()
-
-            # Null the gradients
-            model.zero_grad(set_to_none=True)
+        # Null the gradients
+        model.zero_grad(set_to_none=True)
 
     print0(
         f"peak memory allocated: {torch.cuda.max_memory_allocated() // 1024 // 1024} MiB "

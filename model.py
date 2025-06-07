@@ -1,5 +1,6 @@
 import os
 import glob
+import random
 import time
 import copy
 from dataclasses import dataclass
@@ -406,14 +407,11 @@ class GPT(nn.Module):
         assert input_seq.ndim == 1
 
         ve = [value_embed(input_seq) for value_embed in self.value_embeds]
-        # Extend pattern for 24 layers: 012 at beginning, middle, and end
+        # 012 ... 012 structure on token value embeddings by @YouJiacheng, improved on @leloykun's U-net structure
         ve = (
             [ve[0], ve[1], ve[2]]
-            + [None] * 6
+            + [None] * (len(self.blocks) - 6)
             + [ve[0], ve[1], ve[2]]
-            + [None] * 6
-            + [ve[0], ve[1], ve[2]]
-            + [None] * 3  # Add 3 more None values to reach 24 elements
         )
         assert len(ve) == len(self.blocks)
 
@@ -425,20 +423,7 @@ class GPT(nn.Module):
             short_bm,
             short_bm,
             short_bm,
-            long_bm,  # Initial set of masks
-            short_bm,
-            short_bm,
-            long_bm,
-            short_bm,
-            short_bm,
-            short_bm,
-            long_bm,
-            # Additional masks for the extra layers
-            long_bm,
-            short_bm,
-            short_bm,
-            short_bm,
-            long_bm,
+            long_bm,  # GPT-Medium
             short_bm,
             short_bm,
             long_bm,
@@ -503,9 +488,18 @@ def _load_data_shard(file: Path):
 
 
 def distributed_data_generator(
-    filename_pattern: str, batch_size: int, rank: int, world_size: int
+    batch_size: int, rank: int, world_size: int, is_train: bool
 ):
-    files = [Path(file) for file in sorted(glob.glob(filename_pattern))]
+    mode = "train" if is_train else "val"
+    globs = [
+        sorted(glob.glob(f"data/finewebedu10B/finewebedu_{mode}_*.bin"))[:8],
+        sorted(glob.glob(f"data/fineweb10B/fineweb_{mode}_*.bin"))[:2],
+    ]
+    files = [Path(file) for file in sum(globs, [])]
+    if is_train:
+        random.seed(rank)
+        random.shuffle(files)
+        print(rank, files)
     assert batch_size % world_size == 0
     local_batch_size = batch_size // world_size
     file_iter = iter(
@@ -533,15 +527,11 @@ def distributed_data_generator(
 @dataclass
 class Hyperparameters:
     # data
-    train_files = (
-        "data/fineweb10B/fineweb_train_*.bin"  # input .bin to train on
-    )
-    val_files = "data/fineweb10B/fineweb_val_*.bin"  # input .bin to eval validation loss on
     val_tokens = 10485760  # how many tokens of validation data? it's important to keep this fixed for consistent comparisons
-    train_seq_len = 2 * 1024
-    val_seq_len = 1 * 8 * 1024
+    train_seq_len = 32 * 1024
+    val_seq_len = 1 * 64 * 1024
     # optimization
-    num_iterations = 10000  # number of iterations to run
+    num_iterations = 500  # number of iterations to run
     cooldown_frac = (
         0.4  # fraction of training spent cooling down the learning rate
     )
@@ -549,7 +539,7 @@ class Hyperparameters:
     vocab_size = 50257
     # evaluation and logging
     val_loss_every = (
-        250  # every how many steps to evaluate val loss? 0 for only at the end
+        500  # every how many steps to evaluate val loss? 0 for only at the end
     )
     save_checkpoint = True
 
@@ -565,19 +555,19 @@ def get_window_size_blocks_helper(window_size: int):
 def get_window_size_blocks(step: int, num_iterations: int):
     x = step / num_iterations  # progress in training
     assert 0 <= x <= 1
-    # Linearly increase the block-wise sliding window size over training 128 -> 1024
-    # Reduced from 1728 to 1024 to save memory for larger model
-    window_size = next_multiple_of_n(1024 * x, n=128)
+    # Linearly increase the block-wise sliding window size over training 128 -> 1792
+    # increase by @fernbear.bsky.social; block-wise by @YouJiacheng
+    window_size = next_multiple_of_n(1728 * x, n=128)
     return get_window_size_blocks_helper(window_size)
 
 
 def create_model(vocab_size: int = 50257, max_seq_len: int = 256 * 1024) -> GPT:
-    """Create a GPT model with ~1B parameters."""
+    """Create a 130M GPT-2 model with default parameters."""
     return GPT(
         vocab_size=vocab_size,
-        num_layers=24,
-        num_heads=16,
-        model_dim=2048,
+        num_layers=12,
+        num_heads=6,
+        model_dim=768,
         max_seq_len=max_seq_len,
     )
 
@@ -595,10 +585,10 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     head_params = [model.lm_head.weight]
 
     # init the optimizer(s)
-    adam_params = [  # 1B parameter model
-        dict(params=head_params, lr=0.1),  # Reduced from 0.22
-        dict(params=embed_params, lr=0.3),  # Reduced from 0.6
-        dict(params=scalar_params, lr=0.02),  # Reduced from 0.04
+    adam_params = [  # 130M
+        dict(params=head_params, lr=0.22),
+        dict(params=embed_params, lr=0.6),
+        dict(params=scalar_params, lr=0.04),
     ]
     # small adam epsilon by @YouJiacheng. this is an alternate method of fixing the world_size dependence
     # discovered by @fernbear.bsky.social https://x.com/hi_tysam/status/1879692937589875094
@@ -607,7 +597,7 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     )
     optimizer2 = Muon(
         hidden_matrix_params,
-        lr=0.025,  # Reduced from 0.05
+        lr=0.05,
         momentum=0.95,
         rank=rank,
         world_size=world_size,
