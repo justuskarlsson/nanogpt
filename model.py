@@ -581,8 +581,9 @@ def distributed_data_generator(
         # We only have 2 val file (edu or regular)
         global last_val
         last_val = 0 if last_val == 1 else 1
-        print("FineWebEdu" if last_val == 0 else "FineWeb", "validation")
-        files = [files[last_val:]]
+        if rank == 0:
+            print("FineWebEdu" if last_val == 0 else "FineWeb", "validation")
+        files = [files[last_val]]
     assert batch_size % world_size == 0
     local_batch_size = batch_size // world_size
     file_iter = iter(

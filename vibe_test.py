@@ -32,7 +32,7 @@ def main():
 
     # Load checkpoint
     checkpoint_path = (
-        "logs/dab154c6-6fe0-4ff7-a6eb-897d6439936e/state_step004000.pt"
+        "logs/2025-06-09_08-58-56/state_step010000.pt"
     )
     if os.path.exists(checkpoint_path):
         load_checkpoint(model, checkpoint_path)
@@ -40,6 +40,9 @@ def main():
     else:
         print(f"Checkpoint not found at {checkpoint_path}")
         exit()
+    for m in model.modules():
+        if isinstance(m, torch.nn.Embedding):
+            m.bfloat16()
 
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -74,7 +77,7 @@ def main():
                 )
 
             # Get logits for last position
-            token_logits = output[0, last_idx + i, :50257]
+            token_logits = output[last_idx + i, :50257]
             # Apply temperature
             temperature = 0.5
             token_logits = token_logits / temperature
