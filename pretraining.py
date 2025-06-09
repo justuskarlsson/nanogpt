@@ -193,9 +193,17 @@ def main():
 
         # --------------- TRAINING SECTION -----------------
         inputs, targets = next(train_loader)
-        model(
+        loss = model(
             inputs, targets, get_window_size_blocks(step, args.num_iterations)
-        ).backward()
+        )
+        loss.backward()
+
+        if step % args.val_loss_every == 0:
+            dist.all_reduce(loss, op=dist.ReduceOp.AVG)
+            print0(
+                f"step:{step}/{train_steps} train_loss:{loss:.4f} ",
+                console=True,
+            )
 
         opt2futures = {
             opt: [

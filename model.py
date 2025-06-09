@@ -565,25 +565,27 @@ def distributed_data_generator(
     files = [Path(file) for file in sum(globs, [])]
     if is_train:
         # Interleave for all
-        files = []
-        for i in range(10):
-            files += globs[0][i * 5 : (i + 1) * 5]
-            files += globs[1][i : i + 1]
-        files = [Path(file) for file in files]
-        if rank == 0:
-            print(f"Training files:", files)
-        # Shuffle, each node has different seed
-        # Works like shit, not good.
-        # random.seed(rank)
-        # random.shuffle(files)
-        # print(f"Validation files ({rank}):", files)
+        # files = []
+        # for i in range(10):
+        #     files += globs[0][i * 5 : (i + 1) * 5]
+        #     files += globs[1][i : i + 1]
+        # files = [Path(file) for file in files]
+        # if rank == 0:
+        #     print(f"Training files:", files)
+        pass
     else:
         # We only have 2 val file (edu or regular)
-        global last_val
-        last_val = 0 if last_val == 1 else 1
-        if rank == 0:
-            print("FineWebEdu" if last_val == 0 else "FineWeb", "validation")
-        files = [files[last_val]]
+        # global last_val
+        # last_val = 0 if last_val == 1 else 1
+        # if rank == 0:
+        #     print("FineWebEdu" if last_val == 0 else "FineWeb", "validation")
+        # files = [files[last_val]]
+        pass
+
+    # OTHER WAY: Shuffle, each node has different seed
+    random.seed(rank)
+    random.shuffle(files)
+
     assert batch_size % world_size == 0
     local_batch_size = batch_size // world_size
     file_iter = iter(
@@ -620,13 +622,14 @@ class Hyperparameters:
     # 60k ->  50k steps
     # cmp with medium_org (6000 steps -> 24k equiv)
     # PROD
-    num_iterations = 50000  # number of iterations to run
-    val_loss_every = 500
+    # num_iterations = 50000  # number of iterations to run
+    # val_loss_every = 500
+    # cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
     # DEV
-    # num_iterations = 200  # number of iterations to run
-    # val_loss_every = 50
+    num_iterations = 200  # number of iterations to run
+    val_loss_every = 50
+    cooldown_frac = 0.4
     # 0.5 s per step -> 30k steps -> 30k s -> 4 h
-    cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
     # architecture
     vocab_size = 50257
     # evaluation and logging
@@ -688,11 +691,13 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
         len(lst) for lst in params_collections
     )
 
+    fac = 0.5
     # init the optimizer(s)
+
     adam_param_groups = [
-        dict(params=head_params, lr=1 / 320),
-        dict(params=embed_params, lr=0.3),
-        dict(params=scalar_params, lr=0.015),
+        dict(params=head_params, lr=fac * 1 / 320),
+        dict(params=embed_params, lr=fac * 0.3),
+        dict(params=scalar_params, lr=fac * 0.015),
     ]
     # small adam epsilon by @YouJiacheng. this is an alternate method of fixing the world_size dependence
     # discovered by @fernbear.bsky.social https://x.com/hi_tysam/status/1879692937589875094
@@ -705,7 +710,7 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     )
     optimizer2 = Muon(
         hidden_matrix_params,
-        lr=0.025,
+        lr=fac * 0.025,
         momentum=0.95,
         rank=rank,
         world_size=world_size,
