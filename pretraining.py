@@ -128,7 +128,7 @@ def main():
     training_time_ms = 0
 
     # Start the clock
-    dist.barrier()
+    torch.cuda.synchronize()
     t0 = time.perf_counter()
 
     # Begin training
@@ -145,7 +145,7 @@ def main():
             and step != 0
         ):
             # Stop the clock
-            dist.barrier()
+            torch.cuda.synchronize()
             training_time_ms += 1000 * (time.perf_counter() - t0)
             model.eval()
             val_batch_size = world_size * args.val_seq_len
@@ -175,7 +175,7 @@ def main():
             )
             model.train()
             # Start the clock again
-            dist.barrier()
+            torch.cuda.synchronize()
             t0 = time.perf_counter()
 
         if last_step or (step % 10000 == 0 and step != 0):
@@ -204,12 +204,9 @@ def main():
                 f"step:{step}/{train_steps} train_loss:{loss:.4f} ",
                 console=True,
             )
-
-        opt2futures = {
+        opt2works = {
             opt: [
-                dist.all_reduce(
-                    p.grad, op=dist.ReduceOp.AVG, async_op=True
-                ).get_future()
+                dist.all_reduce(p.grad, op=dist.ReduceOp.AVG, async_op=True)
                 for p in params
             ]
             for opt, params in opt2params.items()
@@ -225,9 +222,10 @@ def main():
             group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
         # step the optimizers
         for opt in optimizers:
-            torch.futures.collect_all(opt2futures[opt]).wait()
+            for work in opt2works[opt]:
+                work.wait()
             opt.step()
-        # Null the gradients
+        # null the gradients
         model.zero_grad(set_to_none=True)
         # Sanity check that the parameters are all-reduced
         # PASSED!

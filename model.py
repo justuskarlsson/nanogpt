@@ -59,32 +59,6 @@ def zeropower_via_newtonschulz5(G: Tensor) -> Tensor:
     return X
 
 
-@torch.compile
-def update(
-    acc_bf16_view_u16: Tensor,
-    mantissa: Tensor,
-    momentum_buffer: Tensor,
-    grad: Tensor,
-    momentum: Tensor,
-    eff_lr: Tensor,
-    eff_weight_decay: Tensor,
-):
-    assert acc_bf16_view_u16.dtype == mantissa.dtype == torch.uint16
-    grad = grad.float()
-    momentum_buffer.copy_(momentum * momentum_buffer + (1 - momentum) * grad)
-    v = zeropower_via_newtonschulz5(
-        momentum * momentum_buffer + (1 - momentum) * grad
-    )
-
-    acc_m_u32 = (acc_bf16_view_u16.to(torch.uint32) << 16) | mantissa.to(
-        torch.uint32
-    )
-    acc_m_u32.view(torch.float32).mul_(1 - eff_weight_decay)
-    acc_m_u32.view(torch.float32).add_(other=v, alpha=-eff_lr)
-    acc_bf16_view_u16.copy_((acc_m_u32 >> 16).to(torch.uint16))
-    mantissa.copy_(acc_m_u32.to(torch.uint16))
-
-
 class Muon(torch.optim.Optimizer):
     """
     Muon - MomentUm Orthogonalized by Newton-schulz
@@ -96,8 +70,16 @@ class Muon(torch.optim.Optimizer):
     matrix. To efficiently orthogonalize each update, we use a Newton-Schulz iteration, which has
     the advantage that it can be stably run in bfloat16 on the GPU.
 
-    Warning: This optimizer should not be used for the embedding layer, the final fully connected layer,
+    Some warnings:
+    - This optimizer should not be used for the embedding layer, the final fully connected layer,
     or any {0,1}-D parameters; those should all be optimized by a standard method (e.g., AdamW).
+    - To use it with 4D convolutional filters, it works well to just flatten their last 3 dimensions.
+
+    Arguments:
+        lr: The learning rate used by the internal SGD.
+        momentum: The momentum used by the internal SGD.
+        nesterov: Whether to use Nesterov-style momentum in the internal SGD. (recommended)
+        ns_steps: The number of Newton-Schulz iteration steps to use.
     """
 
     def __init__(
@@ -106,62 +88,84 @@ class Muon(torch.optim.Optimizer):
         lr=0.02,
         weight_decay=0.01,
         momentum=0.95,
+        nesterov=True,
+        ns_steps=5,
         rank=0,
         world_size=1,
     ):
         self.rank = rank
         self.world_size = world_size
-        defaults = dict(lr=lr, weight_decay=weight_decay, momentum=momentum)
-        super().__init__(params, defaults)
-        assert all(
-            p.dtype == torch.bfloat16
-            for group in self.param_groups
-            for p in group["params"]
+        defaults = dict(
+            lr=lr,
+            weight_decay=weight_decay,
+            momentum=momentum,
+            nesterov=nesterov,
+            ns_steps=ns_steps,
         )
+        params: list[Tensor] = [*params]
+        param_groups = []
+        for size in {p.numel() for p in params}:
+            b = torch.empty(
+                world_size, size, dtype=torch.bfloat16, device="cuda"
+            )
+            group = dict(
+                params=[p for p in params if p.numel() == size],
+                update_buffer=b,
+                update_buffer_views=[b[i] for i in range(world_size)],
+            )
+            param_groups.append(group)
+        super().__init__(param_groups, defaults)
 
     @torch.no_grad()
     def step(self):
-        futures: list[torch.Future] = []
         for group in self.param_groups:
+            update_buffer: Tensor = group["update_buffer"]
+            update_buffer_views: list[Tensor] = group["update_buffer_views"]
+            # generate weight updates in distributed fashion
             params: list[Tensor] = group["params"]
-            params_pad = (
-                params + [torch.empty_like(params[-1])] * self.world_size
-            )
-            momentum = torch._as_tensor_fullprec(group["momentum"])
+            handle = None
+            params_world = None
+
+            def update_prev():  # optimized Muon implementation contributed by @YouJiacheng
+                handle.wait()
+                for p_world, g_world in zip(params_world, update_buffer_views):
+                    p_world.mul_(
+                        1
+                        - group["lr"]
+                        * group["weight_decay"]
+                        * getattr(p_world, "wd_mul", 1.0)
+                    )
+                    p_world.add_(
+                        g_world.view_as(p_world),
+                        alpha=-group["lr"]
+                        * max(1, p_world.size(-2) / p_world.size(-1)) ** 0.5,
+                    )
+
             for base_i in range(len(params))[:: self.world_size]:
                 if base_i + self.rank < len(params):
                     p = params[base_i + self.rank]
+                    g = p.grad
+                    assert g is not None
                     state = self.state[p]
-                    if len(state) == 0:
-                        state["mantissa"] = torch.zeros_like(
-                            p, dtype=torch.uint16
-                        )
-                        state["momentum_buffer"] = torch.zeros_like(
-                            p, dtype=torch.float32
-                        )
-                    update(
-                        p.view(torch.uint16),
-                        state["mantissa"],
-                        state["momentum_buffer"],
-                        p.grad,
-                        momentum,
-                        eff_lr=torch._as_tensor_fullprec(
-                            group["lr"] * max(1, p.size(-2) / p.size(-1)) ** 0.5
-                        ),
-                        eff_weight_decay=torch._as_tensor_fullprec(
-                            group["lr"]
-                            * group["weight_decay"]
-                            * getattr(p, "wd_mul", 1.0)
-                        ),
+                    if "momentum_buffer" not in state:
+                        state["momentum_buffer"] = torch.zeros_like(g)
+                    buf: Tensor = state["momentum_buffer"]
+                    buf.lerp_(g, 1 - group["momentum"])
+                    g = (
+                        g.lerp_(buf, group["momentum"])
+                        if group["nesterov"]
+                        else buf
                     )
-                futures.append(
-                    dist.all_gather(
-                        params_pad[base_i : base_i + self.world_size],
-                        params_pad[base_i + self.rank],
-                        async_op=True,
-                    ).get_future()
+                    g = zeropower_via_newtonschulz5(g).flatten()
+                else:
+                    g = update_buffer_views[self.rank]
+                if base_i > 0:
+                    update_prev()  # async all_gather instead of sync all_reduce by @YouJiacheng
+                handle = dist.all_gather_into_tensor(
+                    update_buffer, g, async_op=True
                 )
-        torch.futures.collect_all(futures).wait()
+                params_world = params[base_i : base_i + self.world_size]
+            update_prev()
 
 
 # -----------------------------------------------------------------------------
@@ -172,13 +176,16 @@ def norm(x: Tensor):
     return F.rms_norm(x, (x.size(-1),))
 
 
-@torch.no_grad()
-def init_linear(w: Tensor):
-    std = 0.5 * (
-        w.size(-1) ** -0.5
-    )  # 0.5 is a bit better than the default 1/sqrt(3)
-    bound = (3**0.5) * std
-    return w.uniform_(-bound, bound)
+class CastedLinear(nn.Linear):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+    ):
+        super().__init__(in_features, out_features, bias=False)
+
+    def forward(self, x: Tensor):
+        return F.linear(x, self.weight.type_as(x))
 
 
 class Rotary(nn.Module):
@@ -216,30 +223,26 @@ class CausalSelfAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = head_dim
         hdim = num_heads * head_dim
+        std = 0.5 * (dim**-0.5)
+        bound = (3**0.5) * std  # improved init scale by @YouJiacheng
         # merged QKV weights: suggested by many, implemented by @fernbear.bsky.social, and further improved by @YouJiacheng
         # https://x.com/hi_tysam/status/1879699187107033311
-        self.qkvo_w = nn.Parameter(
-            init_linear(torch.empty(4, hdim, dim)).bfloat16()
+        self.qkv_w = nn.Parameter(
+            torch.empty(3, hdim, dim).uniform_(-bound, bound)
         )
-        self.qkvo_w.detach()[
-            3
-        ].zero_()  # out zero init suggested by @Grad62304977
+        self.lambdas = nn.Parameter(torch.tensor([0.5, 0.5]))
         self.rotary = Rotary(head_dim, max_seq_len)
+        self.c_proj = CastedLinear(hdim, dim)
+        self.c_proj.weight.detach().zero_()  # zero init suggested by @Grad62304977
         # scale the attention logits by given constant, instead of the default head_dim**-0.5, by @leloykun
         # inspired by learnable scalars used by @brendanh0gan https://x.com/hi_tysam/status/1879693583898591283
         self.attn_scale = 0.12
 
-    def forward(
-        self,
-        x: Tensor,
-        ve: Tensor | None,
-        block_mask: BlockMask,
-        lambdas: Tensor,
-    ):
+    def forward(self, x: Tensor, ve: Tensor | None, block_mask: BlockMask):
         B, T = x.size(0), x.size(1)  # batch size, sequence length
         assert B == 1, "Must use batch size = 1 for FlexAttention"
         q, k, v = (
-            F.linear(x, self.qkvo_w[:3].flatten(end_dim=1).type_as(x))
+            F.linear(x, self.qkv_w.flatten(end_dim=1).type_as(x))
             .view(B, T, 3 * self.num_heads, self.head_dim)
             .chunk(3, dim=-2)
         )
@@ -247,11 +250,11 @@ class CausalSelfAttention(nn.Module):
         q, k = self.rotary(q), self.rotary(k)
         v = norm(v)
         if ve is not None:
-            v = lambdas[0] * v + lambdas[1] * ve.view_as(
+            v = self.lambdas[0] * v + self.lambdas[1] * ve.view_as(
                 v
             )  # @KoszarskyB & @Grad62304977
         else:  # skip mid-layers token value embeddings by @YouJiacheng
-            v = lambdas[0] * v
+            v = self.lambdas[0] * v
         y = flex_attention(
             q.transpose(1, 2),
             k.transpose(1, 2),
@@ -262,7 +265,7 @@ class CausalSelfAttention(nn.Module):
         y = y.contiguous().view(
             B, T, self.num_heads * self.head_dim
         )  # re-assemble all head outputs side by side
-        y = F.linear(y, self.qkvo_w[3])
+        y = self.c_proj(y)
         return y
 
 
@@ -270,17 +273,18 @@ class MLP(nn.Module):
     def __init__(self, dim: int):
         super().__init__()
         hdim = 4 * dim
-        self.fc_w = nn.Parameter(init_linear(torch.empty(hdim, dim)).bfloat16())
-        self.proj_w = nn.Parameter(torch.zeros(dim, hdim).bfloat16())
-        self.fc_w.wd_mul = 2.0
-        self.proj_w.wd_mul = 2.0
+        self.c_fc = CastedLinear(dim, hdim)
+        self.c_proj = CastedLinear(hdim, dim)
+        self.c_proj.weight.detach().zero_()  # zero init suggested by @Grad62304977
+        self.c_fc.weight.wd_mul = 2.0
+        self.c_proj.weight.wd_mul = 2.0
 
     def forward(self, x: Tensor):
-        x = F.linear(x, self.fc_w)
+        x = self.c_fc(x)
         x = F.relu(
             x
         ).square()  # https://arxiv.org/abs/2109.08668v2; ~1-2% better than GELU; suggested by @SKYLINEZ007 and @Grad62304977
-        x = F.linear(x, self.proj_w)
+        x = self.c_proj(x)
         return x
 
 
@@ -296,20 +300,26 @@ class Block(nn.Module):
             else None
         )
         self.mlp = MLP(dim)
+        self.lambdas = nn.Parameter(torch.tensor([1.0, 0.0]))
+        self.record = nn.Buffer(torch.tensor([0.0, 0.0, 0.0]))
 
     def forward(
-        self,
-        x: Tensor,
-        ve: Tensor | None,
-        x0: Tensor,
-        block_mask: BlockMask,
-        lambdas: Tensor,
-        sa_lambdas: Tensor,
+        self, x: Tensor, ve: Tensor | None, x0: Tensor, block_mask: BlockMask
     ):
-        x = lambdas[0] * x + lambdas[1] * x0
+        x = self.lambdas[0] * x + self.lambdas[1] * x0
+        if not self.training:
+            self.record[0].lerp_(torch.square(x).mean(dtype=torch.float32), 0.5)
         if self.attn is not None:
-            x = x + self.attn(x, ve, block_mask, sa_lambdas)
-        x = x + self.mlp(norm(x))
+            z = self.attn(x, ve, block_mask)
+            if not self.training:
+                self.record[1].lerp_(
+                    torch.square(z).mean(dtype=torch.float32), 0.5
+                )
+            x = x + z
+        z = self.mlp(norm(x))
+        if not self.training:
+            self.record[2].lerp_(torch.square(z).mean(dtype=torch.float32), 0.5)
+        x = x + z
         return x
 
 
@@ -345,24 +355,14 @@ class GPT(nn.Module):
         )
         # there are only 50257 unique GPT-2 tokens; we extend to nearest multiple of 128 for efficiency.
         # suggested to me by @Grad62304977. this originates from Karpathy's experiments.
-        self.lm_head_w = nn.Parameter(
-            torch.zeros(next_multiple_of_n(vocab_size, n=128), model_dim)
+        self.lm_head = CastedLinear(
+            model_dim,
+            next_multiple_of_n(vocab_size, n=128),
         )
+        self.lm_head.weight.detach().zero_()  # @Grad62304977
         # Add learnable skip connection weights for decoder layers
         assert num_layers % 2 == 0
-        self.scalars = nn.Parameter(
-            torch.cat(
-                [
-                    torch.ones(num_layers),  # skip_weights
-                    *[
-                        torch.tensor([1.0, 0.0]) for _ in range(num_layers)
-                    ],  # block lambdas
-                    *[
-                        torch.tensor([0.5, 0.5]) for _ in range(num_layers)
-                    ],  # SA lambdas
-                ]
-            )
-        )
+        self.skip_weights = nn.Parameter(torch.ones(num_layers // 2))
 
     def create_blockmasks(
         self, input_seq: Tensor, sliding_window_num_blocks: Tensor
@@ -473,57 +473,31 @@ class GPT(nn.Module):
 
         # U-net design by @brendanh0gan
         skip_connections = []
+        n = len(self.skip_weights)
         skip_map = {
             9: 6,
             10: 4,
             11: 2,
         }
-        skip_weights = self.scalars[: len(self.blocks)]
-        lambdas = self.scalars[
-            1 * len(self.blocks) : 3 * len(self.blocks)
-        ].view(-1, 2)
-        sa_lambdas = self.scalars[
-            3 * len(self.blocks) : 5 * len(self.blocks)
-        ].view(-1, 2)
         for i in range(len(self.blocks)):
             if i in skip_map:
                 x = (
                     x
-                    + skip_weights[skip_map[i]] * skip_connections[skip_map[i]]
+                    + self.skip_weights[skip_map[i]]
+                    * skip_connections[skip_map[i]]
                 )
-            x = self.blocks[i](
-                x, ve[i], x0, block_masks[i], lambdas[i], sa_lambdas[i]
-            )
-            skip_connections.append(x)
+            x = self.blocks[i](x, ve[i], x0, block_masks[i])
+            if i < n:
+                skip_connections.append(x)
 
         x = norm(x)
+        logits = self.lm_head(x)
+        # @Grad62304977 added tanh softcapping following Gemma 2 paper, @KoszarskyB reduced it from 30 to 15, @YouJiacheng shifted it by +15 (2*sigmoid(2*x)=tanh(x)+1)
+        logits = 30 * torch.sigmoid(logits.float() / 7.5)
         if target_seq is None:
-            logits: Tensor = F.linear(
-                x.flatten(end_dim=1), self.lm_head_w.bfloat16()
-            ).float()
             return logits
-        if self.training:
-            logits: Tensor = F.linear(
-                x.flatten(end_dim=1), self.lm_head_w.bfloat16()
-            ).float()
-            loss = F.cross_entropy(
-                15 * logits * torch.rsqrt(logits.square() + 225), target_seq
-            )
-            return loss
-        else:
-            loss = 0
-            for i in range(4):
-                logits: Tensor = F.linear(
-                    x.flatten(end_dim=1).chunk(4)[i], self.lm_head_w.bfloat16()
-                ).float()
-                loss += (
-                    F.cross_entropy(
-                        15 * logits * torch.rsqrt(logits.square() + 225),
-                        target_seq.chunk(4)[i],
-                    )
-                    / 4
-                )
-            return loss
+        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), target_seq)
+        return loss
 
 
 # -----------------------------------------------------------------------------
@@ -615,20 +589,20 @@ class Hyperparameters:
     # data
     val_tokens = 10485760  # 10M
     train_seq_len = 32 * 1024  # 128 K per step
-    val_seq_len = 4 * 32 * 1024
+    val_seq_len = 2 * 32 * 1024
     # optimization
     # 128 M / 1 k steps.
     # Target: ish 6 B tokens
     # 60k ->  50k steps
     # cmp with medium_org (6000 steps -> 24k equiv)
     # PROD
-    # num_iterations = 50000  # number of iterations to run
-    # val_loss_every = 500
-    # cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
+    num_iterations = 50000  # number of iterations to run
+    val_loss_every = 500
+    cooldown_frac = 0.7  # 0.7 -> 0.8 because of more tokens
     # DEV
-    num_iterations = 200  # number of iterations to run
-    val_loss_every = 50
-    cooldown_frac = 0.4
+    # num_iterations = 200  # number of iterations to run
+    # val_loss_every = 50
+    # cooldown_frac = 0.4
     # 0.5 s per step -> 30k steps -> 30k s -> 4 h
     # architecture
     vocab_size = 50257
@@ -636,7 +610,6 @@ class Hyperparameters:
     save_checkpoint = True
 
 
-# attention window size schedule: linearly increase
 @lru_cache(1)
 def get_window_size_blocks_helper(window_size: int):
     return torch.tensor(
@@ -649,8 +622,7 @@ def get_window_size_blocks(step: int, num_iterations: int):
     assert 0 <= x <= 1
     # Linearly increase the block-wise sliding window size over training 128 -> 1792
     # increase by @fernbear.bsky.social; block-wise by @YouJiacheng
-    factor = 4 * x**3 - 6 * x**2 + 3 * x
-    window_size = next_multiple_of_n(3456 * factor, n=128)
+    window_size = next_multiple_of_n(1728 * x, n=128)
     return get_window_size_blocks_helper(window_size)
 
 
@@ -667,50 +639,30 @@ def create_model(vocab_size: int = 50257, max_seq_len: int = 256 * 1024) -> GPT:
 
 def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     """Setup optimizers for the model."""
-    # collect the parameters to optimize
-    hidden_matrix_params = sorted(
-        (p for p in model.blocks.parameters() if p.ndim >= 2),
-        key=lambda x: x.size(),
-        reverse=True,
-    )
-    embed_params = [*model.embed.parameters(), *model.value_embeds.parameters()]
-    scalar_params = [model.scalars]
-    head_params: list[nn.Parameter] = [model.lm_head_w]
-    # sanity check
-    params_collections = [
-        hidden_matrix_params,
-        embed_params,
-        scalar_params,
-        head_params,
+    hidden_matrix_params = [
+        p
+        for n, p in model.blocks.named_parameters()
+        if p.ndim >= 2 and "embed" not in n
     ]
-    optimized_parameters_set = {
-        p for params in params_collections for p in params
-    }
-    assert optimized_parameters_set == {*model.parameters()}
-    assert len(optimized_parameters_set) == sum(
-        len(lst) for lst in params_collections
-    )
+    embed_params = [p for n, p in model.named_parameters() if "embed" in n]
+    scalar_params = [p for p in model.parameters() if p.ndim < 2]
+    head_params: list[nn.Parameter] = [model.lm_head.weight]
 
-    fac = 0.5
+    f = 0.5
     # init the optimizer(s)
-
     adam_param_groups = [
-        dict(params=head_params, lr=fac * 1 / 320),
-        dict(params=embed_params, lr=fac * 0.3),
-        dict(params=scalar_params, lr=fac * 0.015),
+        dict(params=head_params, lr=f * 0.1 / 1024**0.5),
+        dict(params=embed_params, lr=f * 0.3),
+        dict(params=scalar_params, lr=f * 0.015),
     ]
     # small adam epsilon by @YouJiacheng. this is an alternate method of fixing the world_size dependence
     # discovered by @fernbear.bsky.social https://x.com/hi_tysam/status/1879692937589875094
-    optimizer1 = torch.optim.AdamW(
-        adam_param_groups,
-        betas=(0.8, 0.95),
-        eps=1e-10,
-        weight_decay=0.0,
-        fused=True,
+    optimizer1 = torch.optim.Adam(
+        adam_param_groups, betas=(0.8, 0.95), eps=1e-10, fused=True
     )
     optimizer2 = Muon(
         hidden_matrix_params,
-        lr=fac * 0.025,
+        lr=f * 0.025,
         momentum=0.95,
         rank=rank,
         world_size=world_size,
