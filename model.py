@@ -21,7 +21,7 @@ from torch.nn.attention.flex_attention import BlockMask, flex_attention
 
 
 @torch.compile
-def zeropower_via_newtonschulz5(G: Tensor) -> Tensor:
+def zeropower_via_newtonschulz5(G: Tensor, steps: int) -> Tensor:
     """
     Newton-Schulz iteration to compute the zeroth power / orthogonalization of G. We opt to use a
     quintic iteration whose coefficients are selected to maximize the slope at zero. For the purpose
@@ -34,6 +34,7 @@ def zeropower_via_newtonschulz5(G: Tensor) -> Tensor:
     assert (
         G.ndim >= 2
     )  # batched Muon implementation by @scottjmaddox, and put into practice in the record by @YouJiacheng
+    a, b, c = (3.4445, -4.7750, 2.0315)
     X = G.bfloat16()
     if G.size(-2) > G.size(-1):
         X = X.mT
@@ -41,13 +42,7 @@ def zeropower_via_newtonschulz5(G: Tensor) -> Tensor:
     # Ensure spectral norm is at most 1
     X = X / (X.norm(dim=(-2, -1), keepdim=True) + 1e-7)
     # Perform the NS iterations
-    for a, b, c in [
-        (4.0848, -6.8946, 2.9270),
-        (3.9505, -6.3029, 2.6377),
-        (3.7418, -5.5913, 2.3037),
-        (2.8769, -3.1427, 1.2046),
-        (2.8366, -3.0525, 1.2012),
-    ]:
+    for _ in range(steps):
         A = X @ X.mT
         B = (
             b * A + c * A @ A
@@ -86,7 +81,6 @@ class Muon(torch.optim.Optimizer):
         self,
         params,
         lr=0.02,
-        weight_decay=0.01,
         momentum=0.95,
         nesterov=True,
         ns_steps=5,
@@ -97,7 +91,6 @@ class Muon(torch.optim.Optimizer):
         self.world_size = world_size
         defaults = dict(
             lr=lr,
-            weight_decay=weight_decay,
             momentum=momentum,
             nesterov=nesterov,
             ns_steps=ns_steps,
@@ -129,12 +122,6 @@ class Muon(torch.optim.Optimizer):
             def update_prev():  # optimized Muon implementation contributed by @YouJiacheng
                 handle.wait()
                 for p_world, g_world in zip(params_world, update_buffer_views):
-                    p_world.mul_(
-                        1
-                        - group["lr"]
-                        * group["weight_decay"]
-                        * getattr(p_world, "wd_mul", 1.0)
-                    )
                     p_world.add_(
                         g_world.view_as(p_world),
                         alpha=-group["lr"]
@@ -156,7 +143,9 @@ class Muon(torch.optim.Optimizer):
                         if group["nesterov"]
                         else buf
                     )
-                    g = zeropower_via_newtonschulz5(g).flatten()
+                    g = zeropower_via_newtonschulz5(
+                        g, steps=group["ns_steps"]
+                    ).flatten()
                 else:
                     g = update_buffer_views[self.rank]
                 if base_i > 0:
@@ -248,7 +237,6 @@ class CausalSelfAttention(nn.Module):
         )
         q, k = norm(q), norm(k)  # QK norm @Grad62304977
         q, k = self.rotary(q), self.rotary(k)
-        v = norm(v)
         if ve is not None:
             v = self.lambdas[0] * v + self.lambdas[1] * ve.view_as(
                 v
@@ -276,8 +264,6 @@ class MLP(nn.Module):
         self.c_fc = CastedLinear(dim, hdim)
         self.c_proj = CastedLinear(hdim, dim)
         self.c_proj.weight.detach().zero_()  # zero init suggested by @Grad62304977
-        self.c_fc.weight.wd_mul = 2.0
-        self.c_proj.weight.wd_mul = 2.0
 
     def forward(self, x: Tensor):
         x = self.c_fc(x)
@@ -301,25 +287,14 @@ class Block(nn.Module):
         )
         self.mlp = MLP(dim)
         self.lambdas = nn.Parameter(torch.tensor([1.0, 0.0]))
-        self.record = nn.Buffer(torch.tensor([0.0, 0.0, 0.0]))
 
     def forward(
         self, x: Tensor, ve: Tensor | None, x0: Tensor, block_mask: BlockMask
     ):
         x = self.lambdas[0] * x + self.lambdas[1] * x0
-        if not self.training:
-            self.record[0].lerp_(torch.square(x).mean(dtype=torch.float32), 0.5)
         if self.attn is not None:
-            z = self.attn(x, ve, block_mask)
-            if not self.training:
-                self.record[1].lerp_(
-                    torch.square(z).mean(dtype=torch.float32), 0.5
-                )
-            x = x + z
-        z = self.mlp(norm(x))
-        if not self.training:
-            self.record[2].lerp_(torch.square(z).mean(dtype=torch.float32), 0.5)
-        x = x + z
+            x = x + self.attn(norm(x), ve, block_mask)
+        x = x + self.mlp(norm(x))
         return x
 
 
@@ -491,12 +466,16 @@ class GPT(nn.Module):
                 skip_connections.append(x)
 
         x = norm(x)
-        logits = self.lm_head(x)
+        logits = self.lm_head(x).float()
         # @Grad62304977 added tanh softcapping following Gemma 2 paper, @KoszarskyB reduced it from 30 to 15, @YouJiacheng shifted it by +15 (2*sigmoid(2*x)=tanh(x)+1)
-        logits = 30 * torch.sigmoid(logits.float() / 7.5)
+        logits = 30 * torch.sigmoid(logits / (7.5 * x.size(-1) ** 0.5))
         if target_seq is None:
             return logits
-        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), target_seq)
+        loss = F.cross_entropy(
+            logits.view(-1, logits.size(-1)),
+            target_seq,
+            reduction="sum" if self.training else "mean",
+        )
         return loss
 
 
@@ -588,21 +567,21 @@ def distributed_data_generator(
 class Hyperparameters:
     # data
     val_tokens = 10485760  # 10M
-    train_seq_len = 32 * 1024  # 128 K per step
-    val_seq_len = 2 * 32 * 1024
+    train_seq_len = 16 * 1024  # 64 K per step
+    val_seq_len = 2 * 16 * 1024
     # optimization
-    # 128 M / 1 k steps.
+    # 64 M / 1 k steps.
     # Target: ish 6 B tokens
-    # 60k ->  50k steps
-    # cmp with medium_org (6000 steps -> 24k equiv)
+    # 100k ->  80k steps
+    # cmp with medium_org (6000 steps -> 48k equiv)
     # PROD
-    num_iterations = 50000  # number of iterations to run
+    num_iterations = 80000  # number of iterations to run
     val_loss_every = 500
-    cooldown_frac = 0.7  # 0.7 -> 0.8 because of more tokens
+    cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
     # DEV
-    # num_iterations = 200  # number of iterations to run
+    # num_iterations = 1000  # number of iterations to run
     # val_loss_every = 50
-    # cooldown_frac = 0.4
+    # cooldown_frac = 0.5
     # 0.5 s per step -> 30k steps -> 30k s -> 4 h
     # architecture
     vocab_size = 50257
@@ -648,10 +627,10 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     scalar_params = [p for p in model.parameters() if p.ndim < 2]
     head_params: list[nn.Parameter] = [model.lm_head.weight]
 
-    f = 0.5
+    f = 1
     # init the optimizer(s)
     adam_param_groups = [
-        dict(params=head_params, lr=f * 0.1 / 1024**0.5),
+        dict(params=head_params, lr=f * 0.11),
         dict(params=embed_params, lr=f * 0.3),
         dict(params=scalar_params, lr=f * 0.015),
     ]
@@ -668,6 +647,9 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
         world_size=world_size,
     )
     optimizers: list[torch.optim.Optimizer] = [optimizer1, optimizer2]
+    for opt in optimizers:
+        for group in opt.param_groups:
+            group["initial_lr"] = group["lr"]
     return optimizers
 
 
@@ -678,7 +660,8 @@ def get_lr(step: int, num_iterations: int, cooldown_frac: float = 0.4):
     if x < 1 - cooldown_frac:
         return 1.0
     else:
-        return (1 - x) / cooldown_frac
+        w = (1 - x) / cooldown_frac
+        return w * 1.0 + (1 - w) * 0.1
 
 
 def load_checkpoint(model: GPT, checkpoint_path: str):

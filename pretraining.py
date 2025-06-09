@@ -31,7 +31,7 @@ from model import (
 )
 
 # torch._inductor.config.coordinate_descent_tuning = True  # we have banned this flag for new records because it causes compilation to take 30min
-torch._dynamo.config.compiled_autograd = True
+# torch._dynamo.config.compiled_autograd = True
 
 torch.empty(1, device="cuda", requires_grad=True).backward()
 
@@ -107,14 +107,6 @@ def main():
     optimizers = setup_optimizers(model, rank, world_size)
     optimizer2 = optimizers[1]
 
-    def opt_params(opt: torch.optim.Optimizer) -> list[nn.Parameter]:
-        return [p for group in opt.param_groups for p in group["params"]]
-
-    opt2params = {opt: opt_params(opt) for opt in optimizers}
-    for opt in optimizers:
-        for group in opt.param_groups:
-            group["initial_lr"] = group["lr"]
-
     # Compile model
     model = torch.compile(model, dynamic=False)
 
@@ -133,7 +125,8 @@ def main():
 
     # Begin training
     train_steps = args.num_iterations
-    print(f"Starting training for {train_steps} steps")
+    if rank == 0:
+        print(f"Starting training for {train_steps} steps")
 
     for step in range(train_steps + 1):
         last_step = step == train_steps
@@ -200,32 +193,31 @@ def main():
 
         if step % args.val_loss_every == 0:
             dist.all_reduce(loss, op=dist.ReduceOp.AVG)
+            loss = loss / args.train_seq_len
             print0(
                 f"step:{step}/{train_steps} train_loss:{loss:.4f} ",
                 console=True,
             )
-        opt2works = {
-            opt: [
-                dist.all_reduce(p.grad, op=dist.ReduceOp.AVG, async_op=True)
-                for p in params
-            ]
-            for opt, params in opt2params.items()
-        }
-        # set optimization hyperparameters
+        for param in model.parameters():
+            dist.all_reduce(param.grad, op=dist.ReduceOp.AVG)
+
+        # Set optimization hyperparameters
         for opt in optimizers:
             for group in opt.param_groups:
                 group["lr"] = group["initial_lr"] * get_lr(
                     step, args.num_iterations, args.cooldown_frac
                 )
-        for group in optimizer2.param_groups:
-            frac = min(step / 300, 1)  # momentum warmup for muon
+
+        # Momentum warmup for Muon optimizer
+        for group in optimizers[1].param_groups:  # optimizers[1] is Muon
+            frac = min(step / 300, 1)
             group["momentum"] = (1 - frac) * 0.85 + frac * 0.95
-        # step the optimizers
+
+        # Step the optimizers
         for opt in optimizers:
-            for work in opt2works[opt]:
-                work.wait()
             opt.step()
-        # null the gradients
+
+        # Null the gradients
         model.zero_grad(set_to_none=True)
         # Sanity check that the parameters are all-reduced
         # PASSED!
