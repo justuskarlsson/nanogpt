@@ -551,6 +551,9 @@ def _load_data_shard(file: Path):
     return tokens
 
 
+last_val = 0
+
+
 def distributed_data_generator(
     batch_size: int, rank: int, world_size: int, is_train: bool
 ):
@@ -574,6 +577,12 @@ def distributed_data_generator(
         # random.seed(rank)
         # random.shuffle(files)
         # print(f"Validation files ({rank}):", files)
+    else:
+        # We only have 2 val file (edu or regular)
+        global last_val
+        last_val = 0 if last_val == 1 else 1
+        print("FineWebEdu" if last_val == 0 else "FineWeb", "validation")
+        files = [files[last_val:]]
     assert batch_size % world_size == 0
     local_batch_size = batch_size // world_size
     file_iter = iter(
@@ -601,7 +610,7 @@ def distributed_data_generator(
 @dataclass
 class Hyperparameters:
     # data
-    val_tokens = 10485760 * 2  # 10M
+    val_tokens = 10485760  # 10M
     train_seq_len = 32 * 1024  # 128 K per step
     val_seq_len = 4 * 32 * 1024
     # optimization
@@ -609,17 +618,17 @@ class Hyperparameters:
     # Target: ish 6 B tokens
     # 60k ->  50k steps
     # cmp with medium_org (6000 steps -> 24k equiv)
-    # num_iterations = 30000  # number of iterations to run
-    # DEV
+    # PROD
     num_iterations = 50000  # number of iterations to run
+    val_loss_every = 500
+    # DEV
+    # num_iterations = 200  # number of iterations to run
+    # val_loss_every = 50
     # 0.5 s per step -> 30k steps -> 30k s -> 4 h
     cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
     # architecture
     vocab_size = 50257
     # evaluation and logging
-    val_loss_every = (
-        1000  # every how many steps to evaluate val loss? 0 for only at the end
-    )
     save_checkpoint = True
 
 

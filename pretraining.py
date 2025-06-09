@@ -221,6 +221,20 @@ def main():
             opt.step()
         # Null the gradients
         model.zero_grad(set_to_none=True)
+        # Sanity check that the parameters are all-reduced
+        # PASSED!
+        # if step == 5:
+        #     with torch.no_grad():
+        #         for p in model.parameters():
+        #             # copy local value
+        #             ref = p.data.clone()
+        #             # max across ranks *into the same tensor*
+        #             dist.all_reduce(p.data, op=dist.ReduceOp.MAX)
+        #             # if parameters were in-sync, max == ref on every rank
+        #             assert torch.allclose(p.data, ref, atol=1e-6), "desync!"
+        #             # restore original value so training isn’t disturbed
+        #             p.data.copy_(ref)
+        #     print("Sanity check passed")
 
     print0(
         f"peak memory allocated: {torch.cuda.max_memory_allocated() // 1024 // 1024} MiB "
