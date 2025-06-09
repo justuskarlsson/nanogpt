@@ -18,6 +18,10 @@ prompts = [
     ("Be me, 24 year old programmer.", 30),
     ("There once was a", 50),
     ("Let me tell you a story about a cat.", 100),
+    (
+        "Key facts about Sweden Sweden is part of the Nordic region in northern Europe, together with the countries of Denmark, Finland, Iceland and Norway. Sweden is large in size, small in population. Capital:",
+        100,
+    ),
 ]
 
 
@@ -31,9 +35,7 @@ def main():
     ).cuda()
 
     # Load checkpoint
-    checkpoint_path = (
-        "logs/2025-06-09_08-58-56/state_step010000.pt"
-    )
+    checkpoint_path = "logs/2025-06-09_13-05-17/state_step010000.pt"
     if os.path.exists(checkpoint_path):
         load_checkpoint(model, checkpoint_path)
         print("Model loaded from checkpoint")
@@ -46,6 +48,16 @@ def main():
 
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+    def pad_input(input_ids):
+        BLOCK_SIZE = 128
+        if len(input_ids) % BLOCK_SIZE != 0:
+            padding_length = BLOCK_SIZE - (len(input_ids) % BLOCK_SIZE)
+            input_ids = torch.nn.functional.pad(
+                input_ids, (0, padding_length), value=tokenizer.eos_token_id
+            )
+        return input_ids
+
     for prompt, max_length in prompts:
 
         # Tokenize input
@@ -53,14 +65,8 @@ def main():
         input_ids = input_ids.reshape(-1).cuda()
 
         # Pad to block size
-        BLOCK_SIZE = 128
         last_idx = len(input_ids) - 1
-        if len(input_ids) % BLOCK_SIZE != 0:
-            padding_length = BLOCK_SIZE - (len(input_ids) % BLOCK_SIZE)
-            input_ids = torch.nn.functional.pad(
-                input_ids, (0, padding_length), value=tokenizer.eos_token_id
-            )
-
+        input_ids = pad_input(input_ids)
         # Get logits
         model.eval()
 
@@ -69,7 +75,7 @@ def main():
         for i in range(max_length):
             with torch.no_grad():
                 output = model(
-                    current_input,
+                    pad_input(current_input),
                     None,
                     get_window_size_blocks(
                         args.num_iterations, args.num_iterations
@@ -77,9 +83,9 @@ def main():
                 )
 
             # Get logits for last position
-            token_logits = output[last_idx + i, :50257]
+            token_logits = output[0, last_idx + i, :50257]
             # Apply temperature
-            temperature = 0.5
+            temperature = 0.7
             token_logits = token_logits / temperature
             probs = torch.nn.functional.softmax(token_logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1).item()

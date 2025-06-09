@@ -577,7 +577,7 @@ class Hyperparameters:
     # PROD
     num_iterations = 80000  # number of iterations to run
     val_loss_every = 500
-    cooldown_frac = 0.8  # 0.7 -> 0.8 because of more tokens
+    cooldown_frac = 0.85  #  because of more tokens + more steps
     # DEV
     # num_iterations = 1000  # number of iterations to run
     # val_loss_every = 50
@@ -627,7 +627,7 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     scalar_params = [p for p in model.parameters() if p.ndim < 2]
     head_params: list[nn.Parameter] = [model.lm_head.weight]
 
-    f = 1
+    f = 0.5
     # init the optimizer(s)
     adam_param_groups = [
         dict(params=head_params, lr=f * 0.11),
