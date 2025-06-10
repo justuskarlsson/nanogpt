@@ -35,7 +35,7 @@ def main():
     ).cuda()
 
     # Load checkpoint
-    checkpoint_path = "logs/2025-06-09_13-05-17/state_step010000.pt"
+    checkpoint_path = "logs/_2025-06-09_18-45-23/state_step070000.pt"
     if os.path.exists(checkpoint_path):
         load_checkpoint(model, checkpoint_path)
         print("Model loaded from checkpoint")
