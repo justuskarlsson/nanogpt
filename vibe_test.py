@@ -24,8 +24,18 @@ prompts = [
     ),
 ]
 
+# Instruction-following prompts for finetuned models
+instruction_prompts = [
+    ("Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nWhat is the capital of France?\n\n### Response:\n", 50),
+    ("Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nExplain photosynthesis in simple terms.\n\n### Response:\n", 150),
+    ("Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nWrite a short poem about the ocean.\n\n### Response:\n", 100),
+    ("Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nList three benefits of exercise.\n\n### Response:\n", 80),
+    ("Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nTranslate the following text to Spanish.\n\n### Input:\nHello, how are you today?\n\n### Response:\n", 50),
+]
+
 
 def main():
+    import sys
     args = Hyperparameters()
 
     # Create model
@@ -34,14 +44,48 @@ def main():
         max_seq_len=max(args.train_seq_len, args.val_seq_len),
     ).cuda()
 
-    # Load checkpoint
-    checkpoint_path = "logs/_2025-06-09_18-45-23/state_step070000.pt"
-    if os.path.exists(checkpoint_path):
-        load_checkpoint(model, checkpoint_path)
-        print("Model loaded from checkpoint")
+    # Auto-detect model type and checkpoint
+    model_type = "pretrained"
+    checkpoint_path = None
+    
+    # Check for finetuned models first
+    finetuned_paths = [
+        "alpaca_finetuned_best.pt",
+        "alpaca_finetuned_final.pt",
+    ]
+    
+    for path in finetuned_paths:
+        if os.path.exists(path):
+            checkpoint_path = path
+            model_type = "finetuned"
+            break
+    
+    # Fall back to pretrained checkpoint
+    if checkpoint_path is None:
+        # Look for latest pretrained checkpoint
+        import glob
+        pretrained_checkpoints = glob.glob("logs/*/state_step*.pt")
+        if pretrained_checkpoints:
+            # Get the latest one
+            checkpoint_path = max(pretrained_checkpoints, 
+                                key=lambda x: int(x.split("step")[-1].split(".")[0]))
+            model_type = "pretrained"
+    
+    if checkpoint_path is None:
+        print("No checkpoint found. Please run pretraining or finetuning first.")
+        sys.exit(1)
+    
+    print(f"Loading {model_type} model from: {checkpoint_path}")
+    
+    if model_type == "finetuned":
+        # Load finetuned model
+        checkpoint = torch.load(checkpoint_path, map_location="cuda")
+        model.load_state_dict(checkpoint["model_state_dict"])
+        print("Finetuned model loaded")
     else:
-        print(f"Checkpoint not found at {checkpoint_path}")
-        exit()
+        # Load pretrained model
+        load_checkpoint(model, checkpoint_path)
+        print("Pretrained model loaded")
     for m in model.modules():
         if isinstance(m, torch.nn.Embedding):
             m.bfloat16()
@@ -58,7 +102,12 @@ def main():
             )
         return input_ids
 
-    for prompt, max_length in prompts:
+    # Choose prompts based on model type
+    test_prompts = instruction_prompts if model_type == "finetuned" else prompts
+    print(f"\nTesting {model_type} model with {len(test_prompts)} prompts:")
+    print("=" * 60)
+
+    for prompt, max_length in test_prompts:
 
         # Tokenize input
         input_ids = tokenizer(prompt, return_tensors="pt").input_ids
@@ -103,9 +152,25 @@ def main():
                     ]
                 )
 
-        # Print generated text
-        full_text = prompt + tokenizer.decode(generated_tokens)
-        print(full_text, "\n" + "-" * 50 + "\n")
+        # Print generated text with better formatting for instructions
+        if model_type == "finetuned" and "### Instruction:" in prompt:
+            instruction = prompt.split("### Instruction:")[1].split("### Response:")[0].strip()
+            if "### Input:" in instruction:
+                parts = instruction.split("### Input:")
+                task = parts[0].strip()
+                context = parts[1].strip()
+                print(f"Task: {task}")
+                print(f"Input: {context}")
+            else:
+                print(f"Task: {instruction}")
+            
+            response = tokenizer.decode(generated_tokens).strip()
+            print(f"Response: {response}")
+        else:
+            full_text = prompt + tokenizer.decode(generated_tokens)
+            print(full_text)
+        
+        print("\n" + "-" * 50 + "\n")
 
 
 if __name__ == "__main__":
