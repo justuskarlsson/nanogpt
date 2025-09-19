@@ -52,7 +52,7 @@ def load_model_and_tokenizer(checkpoint_path: str = None):
     
     # Load model
     if "alpaca_finetuned" in checkpoint_path:
-        checkpoint = torch.load(checkpoint_path, map_location="cuda")
+        checkpoint = torch.load(checkpoint_path, map_location="cuda", weights_only=False)
         model.load_state_dict(checkpoint["model_state_dict"])
     else:
         load_checkpoint(model, checkpoint_path)
@@ -120,6 +120,100 @@ def get_logits_for_choices(model, tokenizer, context: str, choices: List[str], m
     return choice_logprobs
 
 
+def generate_text_response(model, tokenizer, prompt, max_new_tokens=50, temperature=0.8):
+    """Generate a text response from the model."""
+    model.eval()
+
+    # Tokenize prompt
+    input_ids = tokenizer.encode(prompt, return_tensors="pt").cuda().squeeze(0)
+    input_ids = pad_to_block_size(input_ids)
+
+    generated_tokens = []
+    current_length = len(tokenizer.encode(prompt))
+
+    with torch.no_grad():
+        for _ in range(max_new_tokens):
+            # Get logits
+            logits = model(
+                input_ids,
+                None,
+                get_window_size_blocks(1000, 1000)
+            )
+
+            # Sample next token
+            if current_length - 1 < logits.size(1):
+                next_token_logits = logits[0, current_length - 1, :]
+                probs = F.softmax(next_token_logits / temperature, dim=-1)
+                next_token = torch.multinomial(probs, num_samples=1)
+
+                # Add to sequence
+                if current_length < len(input_ids):
+                    input_ids[current_length] = next_token
+                    current_length += 1
+
+                    # Decode and check for stopping
+                    gen_text = tokenizer.decode(next_token)
+                    generated_tokens.append(gen_text)
+
+                    # Stop at EOS token or newline
+                    if next_token.item() == tokenizer.eos_token_id or "\n" in gen_text:
+                        break
+                else:
+                    break
+            else:
+                break
+
+    return "".join(generated_tokens).strip()
+
+
+def assess_response_quality(instruction, response):
+    """Simple heuristic to assess response quality."""
+    if not response or len(response.strip()) < 2:
+        return False
+
+    # Check for repetition (same token repeated multiple times)
+    tokens = response.split()
+    if len(tokens) > 3:
+        # Check if more than half the tokens are the same
+        from collections import Counter
+        token_counts = Counter(tokens)
+        most_common_count = token_counts.most_common(1)[0][1]
+        if most_common_count > len(tokens) / 2:
+            return False
+
+    # Simple keyword matching for specific questions
+    instruction_lower = instruction.lower()
+    response_lower = response.lower()
+
+    if "capital of france" in instruction_lower:
+        return "paris" in response_lower
+    elif "2 + 2" in instruction_lower or "2+2" in instruction_lower:
+        return "4" in response_lower
+    elif "colors" in instruction_lower:
+        colors = ["red", "blue", "green", "yellow", "black", "white", "purple", "orange", "pink", "brown"]
+        return any(color in response_lower for color in colors)
+    elif "photosynthesis" in instruction_lower:
+        keywords = ["light", "sun", "plant", "energy", "carbon", "oxygen", "glucose"]
+        return any(keyword in response_lower for keyword in keywords)
+    elif "exercise" in instruction_lower:
+        keywords = ["health", "fit", "strong", "heart", "muscle", "weight", "energy"]
+        return any(keyword in response_lower for keyword in keywords)
+    elif "shape" in instruction_lower and "earth" in instruction_lower:
+        return any(word in response_lower for word in ["round", "sphere", "ball", "circular"])
+    elif "days" in instruction_lower and "week" in instruction_lower:
+        return "7" in response_lower or "seven" in response_lower
+    elif "fruit" in instruction_lower:
+        fruits = ["apple", "banana", "orange", "grape", "strawberry", "pear", "peach", "cherry"]
+        return any(fruit in response_lower for fruit in fruits)
+    elif "bees make" in instruction_lower:
+        return "honey" in response_lower
+    elif "opposite of hot" in instruction_lower:
+        return any(word in response_lower for word in ["cold", "cool", "chilly", "freezing"])
+
+    # If no specific check, just check that response has reasonable length and no obvious repetition
+    return len(response.strip()) > 5 and len(response.strip()) < 200
+
+
 def evaluate_hellaswag(model, tokenizer, num_samples: int = 100):
     """Evaluate on HellaSwag dataset."""
     print("Loading HellaSwag dataset...")
@@ -157,6 +251,62 @@ def evaluate_hellaswag(model, tokenizer, num_samples: int = 100):
     accuracy = correct / total if total > 0 else 0
     print(f"HellaSwag Accuracy: {accuracy:.3f} ({correct}/{total})")
     return {"hellaswag_accuracy": accuracy, "hellaswag_correct": correct, "hellaswag_total": total}
+
+
+def evaluate_hellaswag_detailed(model, tokenizer, num_samples: int = 100):
+    """Evaluate on HellaSwag dataset with detailed tracking."""
+    print("Loading HellaSwag dataset...")
+    try:
+        dataset = load_dataset("hellaswag", split="validation")
+    except:
+        print("Could not load HellaSwag dataset. Skipping...")
+        return {}
+
+    correct = 0
+    total = 0
+    details = []
+
+    for i, example in enumerate(dataset):
+        if i >= num_samples:
+            break
+
+        if i % 20 == 0:
+            print(f"Processing HellaSwag example {i}/{min(num_samples, len(dataset))}")
+
+        # Format context
+        context = example["ctx"]
+        choices = example["endings"]
+        correct_idx = int(example["label"])
+
+        # Get logits for each choice
+        choice_scores = get_logits_for_choices(model, tokenizer, context, choices)
+
+        # Predict
+        predicted_idx = np.argmax(choice_scores)
+
+        is_correct = predicted_idx == correct_idx
+        if is_correct:
+            correct += 1
+        total += 1
+
+        # Save details
+        details.append({
+            "input": context,
+            "choices": choices,
+            "correct_answer": choices[correct_idx],
+            "predicted_answer": choices[predicted_idx],
+            "correct": is_correct,
+            "scores": choice_scores
+        })
+
+    accuracy = correct / total if total > 0 else 0
+    print(f"HellaSwag Accuracy: {accuracy:.3f} ({correct}/{total})")
+    return {
+        "hellaswag_accuracy": accuracy,
+        "hellaswag_correct": correct,
+        "hellaswag_total": total,
+        "hellaswag_details": details
+    }
 
 
 def evaluate_commonsense_qa(model, tokenizer, num_samples: int = 100):
@@ -206,6 +356,72 @@ def evaluate_commonsense_qa(model, tokenizer, num_samples: int = 100):
     accuracy = correct / total if total > 0 else 0
     print(f"CommonsenseQA Accuracy: {accuracy:.3f} ({correct}/{total})")
     return {"commonsense_qa_accuracy": accuracy, "commonsense_qa_correct": correct, "commonsense_qa_total": total}
+
+
+def evaluate_commonsense_qa_detailed(model, tokenizer, num_samples: int = 100):
+    """Evaluate on CommonsenseQA dataset with detailed tracking."""
+    print("Loading CommonsenseQA dataset...")
+    try:
+        dataset = load_dataset("commonsense_qa", split="validation")
+    except:
+        print("Could not load CommonsenseQA dataset. Skipping...")
+        return {}
+
+    correct = 0
+    total = 0
+    details = []
+
+    for i, example in enumerate(dataset):
+        if i >= num_samples:
+            break
+
+        if i % 20 == 0:
+            print(f"Processing CommonsenseQA example {i}/{min(num_samples, len(dataset))}")
+
+        # Format as multiple choice
+        question = example["question"]
+        choices = example["choices"]["text"]
+        correct_answer = example["answerKey"]
+
+        # Map answer key to index
+        answer_map = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
+        if correct_answer not in answer_map or len(choices) <= answer_map[correct_answer]:
+            continue
+
+        correct_idx = answer_map[correct_answer]
+
+        # Format context
+        context = f"Question: {question}\nAnswer: "
+
+        # Get logits for each choice
+        choice_scores = get_logits_for_choices(model, tokenizer, context, choices)
+
+        # Predict
+        predicted_idx = np.argmax(choice_scores)
+
+        is_correct = predicted_idx == correct_idx
+        if is_correct:
+            correct += 1
+        total += 1
+
+        # Save details
+        details.append({
+            "question": question,
+            "choices": choices,
+            "correct_answer": choices[correct_idx],
+            "predicted_answer": choices[predicted_idx],
+            "correct": is_correct,
+            "scores": choice_scores
+        })
+
+    accuracy = correct / total if total > 0 else 0
+    print(f"CommonsenseQA Accuracy: {accuracy:.3f} ({correct}/{total})")
+    return {
+        "commonsense_qa_accuracy": accuracy,
+        "commonsense_qa_correct": correct,
+        "commonsense_qa_total": total,
+        "commonsense_qa_details": details
+    }
 
 
 def evaluate_instruction_following_quality(model, tokenizer, num_samples: int = 50):
@@ -300,31 +516,128 @@ def evaluate_instruction_following_quality(model, tokenizer, num_samples: int = 
     return {"instruction_following_accuracy": accuracy}
 
 
+def evaluate_instruction_following_quality_detailed(model, tokenizer, num_samples: int = 50):
+    """Evaluate instruction following quality with simple prompts and detailed tracking."""
+    test_instructions = [
+        "What is the capital of France?",
+        "Name three colors.",
+        "What is 2 + 2?",
+        "Explain what photosynthesis is in one sentence.",
+        "List two benefits of exercise.",
+        "What shape is the Earth?",
+        "How many days are in a week?",
+        "Name a type of fruit.",
+        "What do bees make?",
+        "What is the opposite of hot?"
+    ]
+
+    details = []
+    good_responses = 0
+
+    for i in range(min(num_samples, len(test_instructions))):
+        instruction = test_instructions[i % len(test_instructions)]
+
+        prompt = f"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:\n"
+
+        # Generate response
+        response = generate_text_response(model, tokenizer, prompt, max_new_tokens=50)
+
+        # Simple quality assessment
+        is_good = assess_response_quality(instruction, response)
+        if is_good:
+            good_responses += 1
+
+        # Save details
+        details.append({
+            "instruction": instruction,
+            "response": response,
+            "assessment": "Good" if is_good else "Poor"
+        })
+
+        print(f"Instruction: {instruction}")
+        print(f"Response: {response}")
+        print(f"Assessment: {'Good' if is_good else 'Poor'}")
+        print("-" * 40)
+
+    accuracy = good_responses / len(details) if details else 0
+    print(f"Instruction Following Accuracy: {accuracy:.3f}")
+    return {
+        "instruction_following_accuracy": accuracy,
+        "instruction_following_details": details
+    }
+
+
+def write_detailed_results(results, output_file="evaluation_details.txt"):
+    """Write detailed evaluation results to a text file."""
+    with open(output_file, "w") as f:
+        f.write("DETAILED EVALUATION RESULTS\n")
+        f.write("=" * 60 + "\n\n")
+
+        # HellaSwag details
+        if "hellaswag_details" in results:
+            f.write("HELLASWAG RESULTS\n")
+            f.write("-" * 30 + "\n")
+            for i, detail in enumerate(results["hellaswag_details"]):
+                f.write(f"Example {i+1}:\n")
+                f.write(f"Input: {detail['input']}\n")
+                f.write(f"Choices: {detail['choices']}\n")
+                f.write(f"Correct Answer: {detail['correct_answer']}\n")
+                f.write(f"Predicted Answer: {detail['predicted_answer']}\n")
+                f.write(f"Correct: {'YES' if detail['correct'] else 'NO'}\n")
+                f.write(f"Scores: {[f'{s:.3f}' for s in detail['scores']]}\n")
+                f.write("\n")
+
+        # CommonsenseQA details
+        if "commonsense_qa_details" in results:
+            f.write("\nCOMMONSENSE QA RESULTS\n")
+            f.write("-" * 30 + "\n")
+            for i, detail in enumerate(results["commonsense_qa_details"]):
+                f.write(f"Example {i+1}:\n")
+                f.write(f"Question: {detail['question']}\n")
+                f.write(f"Choices: {detail['choices']}\n")
+                f.write(f"Correct Answer: {detail['correct_answer']}\n")
+                f.write(f"Predicted Answer: {detail['predicted_answer']}\n")
+                f.write(f"Correct: {'YES' if detail['correct'] else 'NO'}\n")
+                f.write(f"Scores: {[f'{s:.3f}' for s in detail['scores']]}\n")
+                f.write("\n")
+
+        # Instruction following details
+        if "instruction_following_details" in results:
+            f.write("\nINSTRUCTION FOLLOWING RESULTS\n")
+            f.write("-" * 30 + "\n")
+            for i, detail in enumerate(results["instruction_following_details"]):
+                f.write(f"Example {i+1}:\n")
+                f.write(f"Instruction: {detail['instruction']}\n")
+                f.write(f"Generated Response: {detail['response']}\n")
+                f.write(f"Quality Assessment: {detail['assessment']}\n")
+                f.write("\n")
+
+
 def main():
     """Run all evaluations."""
     print("=" * 60)
     print("Starting Evaluation Benchmarks")
     print("=" * 60)
-    
+
     # Load model
     try:
         model, tokenizer = load_model_and_tokenizer()
     except Exception as e:
         print(f"Error loading model: {e}")
         return
-    
-    # Run evaluations
+
+    # Run evaluations with detailed tracking
     results = {}
-    
+
     # Instruction following quality (quick test)
-    results.update(evaluate_instruction_following_quality(model, tokenizer, num_samples=10))
-    
+    results.update(evaluate_instruction_following_quality_detailed(model, tokenizer, num_samples=10))
+
     # HellaSwag (common sense reasoning)
-    results.update(evaluate_hellaswag(model, tokenizer, num_samples=50))
-    
+    results.update(evaluate_hellaswag_detailed(model, tokenizer, num_samples=50))
+
     # CommonsenseQA
-    results.update(evaluate_commonsense_qa(model, tokenizer, num_samples=50))
-    
+    results.update(evaluate_commonsense_qa_detailed(model, tokenizer, num_samples=50))
+
     # Print summary
     print("=" * 60)
     print("EVALUATION SUMMARY")
@@ -332,11 +645,17 @@ def main():
     for key, value in results.items():
         if "accuracy" in key:
             print(f"{key}: {value:.3f}")
-    
+
     # Save results
     with open("evaluation_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+        # Remove detailed results from JSON (too large)
+        json_results = {k: v for k, v in results.items() if "_details" not in k}
+        json.dump(json_results, f, indent=2)
     print(f"\nResults saved to evaluation_results.json")
+
+    # Save detailed results to text file
+    write_detailed_results(results)
+    print(f"Detailed results saved to evaluation_details.txt")
 
 
 if __name__ == "__main__":

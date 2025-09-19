@@ -1,0 +1,861 @@
+DETAILED EVALUATION RESULTS
+============================================================
+
+HELLASWAG RESULTS
+------------------------------
+Example 1:
+Input: A man is sitting on a roof. he
+Choices: ['is using wrap to wrap a pair of skis.', 'is ripping level tiles off.', "is holding a rubik's cube.", 'starts pulling up roofing on a roof.']
+Correct Answer: starts pulling up roofing on a roof.
+Predicted Answer: is holding a rubik's cube.
+Correct: NO
+Scores: ['-58.188', '-46.608', '-38.425', '-47.068']
+
+Example 2:
+Input: A lady walks to a barbell. She bends down and grabs the pole. the lady
+Choices: ['swings and lands in her arms.', 'pulls the barbell forward.', 'pulls a rope attached to the barbell.', 'stands and lifts the weight over her head.']
+Correct Answer: stands and lifts the weight over her head.
+Predicted Answer: stands and lifts the weight over her head.
+Correct: YES
+Scores: ['-40.718', '-36.668', '-44.610', '-32.491']
+
+Example 3:
+Input: Two women in a child are shown in a canoe while a man pulls the canoe while standing in the water, with other individuals visible in the background. the child and a different man
+Choices: ['are then shown paddling down a river in a boat while a woman talks.', 'are driving the canoe, they go down the river flowing side to side.', 'sit in a canoe while the man paddles.', 'walking go down the rapids, while the man in his helicopter almost falls and goes out of canoehood.']
+Correct Answer: sit in a canoe while the man paddles.
+Predicted Answer: sit in a canoe while the man paddles.
+Correct: YES
+Scores: ['-56.763', '-58.082', '-30.964', '-114.868']
+
+Example 4:
+Input: A boy is running down a track. the boy
+Choices: ['runs into a car.', 'gets in a mat.', 'lifts his body above the height of a pole.', 'stands on his hands and springs.']
+Correct Answer: lifts his body above the height of a pole.
+Predicted Answer: runs into a car.
+Correct: NO
+Scores: ['-24.254', '-33.103', '-50.033', '-35.797']
+
+Example 5:
+Input: The boy lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy
+Choices: ['turns his body around on the mat.', 'gets up from the mat.', 'continues to lift his body over the pole.', 'wiggles out of the mat.']
+Correct Answer: gets up from the mat.
+Predicted Answer: gets up from the mat.
+Correct: YES
+Scores: ['-25.445', '-24.030', '-25.840', '-25.343']
+
+Example 6:
+Input: The boy lands on his back on to a red mat. The boy gets up from the mat. the boy
+Choices: ['starts doing spins.', 'celebrates by clapping and flexing both arms.', 'is dancing on the mat.', 'does jump jacks on his stick.']
+Correct Answer: celebrates by clapping and flexing both arms.
+Predicted Answer: is dancing on the mat.
+Correct: NO
+Scores: ['-32.095', '-45.513', '-25.298', '-49.625']
+
+Example 7:
+Input: A man is standing in front of a camera. He starts playing a harmonica for the camera. he
+Choices: ['begins to play the harmonica with his body while looking at the camera.', 'seems to be singing while playing the harmonica.', 'rocks back and forth to the music as he goes.', 'painted a fence in front of the camera.']
+Correct Answer: rocks back and forth to the music as he goes.
+Predicted Answer: painted a fence in front of the camera.
+Correct: NO
+Scores: ['-38.386', '-33.851', '-45.403', '-32.078']
+
+Example 8:
+Input: A cartoon animation video is shown with people wandering around and rockets being shot. two men
+Choices: ['fight robots of evil and ends with a to be continued.', 'are then shown in closeups shooting a shot put.', 'push a child in a speedboat in the water.', "look in the cameraman's eye and smile."]
+Correct Answer: fight robots of evil and ends with a to be continued.
+Predicted Answer: look in the cameraman's eye and smile.
+Correct: NO
+Scores: ['-70.798', '-59.280', '-50.861', '-48.825']
+
+Example 9:
+Input: A man is holding a pocket knife while sitting on some rocks in the wilderness. then he
+Choices: ['opens a can of oil put oil on the knife, and puts oil on a knife and press it through a can filled with oil then cuts several pieces from the sandwiches.', 'takes a small stone from the flowing river and smashes it on another stone.', 'uses the knife to shave his leg.', 'sand the rocks and tops them by using strong pressure.']
+Correct Answer: takes a small stone from the flowing river and smashes it on another stone.
+Predicted Answer: uses the knife to shave his leg.
+Correct: NO
+Scores: ['-142.515', '-62.749', '-29.134', '-61.155']
+
+Example 10:
+Input: Then he takes a small stone from the flowing river and smashes it on another stone. He starts to crush the small stone to smaller pieces. he
+Choices: ['cuts the center stone in half and blow it on to make it bigger.', 'grind it hard to make the pieces smaller.', 'eventually brings it back into view and adds it to the smaller ones to make a small triangular shaped piece.', 'starts to party with them and throw the pieces by hand while they celebrate.']
+Correct Answer: grind it hard to make the pieces smaller.
+Predicted Answer: grind it hard to make the pieces smaller.
+Correct: YES
+Scores: ['-53.639', '-41.184', '-78.429', '-78.011']
+
+Example 11:
+Input: Then he takes a piece of bark and rubs the powered stone pieces onto it. The stone particles stick to the wet piece of wood. he
+Choices: ['uses a small brush to polish one of the stone pieces.', 'then uses a strip of sealing tape to seal the board and then smooths the bottom of the board.', 'walks towards the camera.', 'then takes the knife and sharpens it against the wood piece.']
+Correct Answer: then takes the knife and sharpens it against the wood piece.
+Predicted Answer: walks towards the camera.
+Correct: NO
+Scores: ['-47.415', '-68.194', '-29.777', '-36.694']
+
+Example 12:
+Input: The stone particles stick to the wet piece of wood. He then takes the knife and sharpens it against the wood piece. he
+Choices: ['then cuts off the excess hair of the wood.', 'scrapes the wood with a broom in the cutting tool used in sharpening the instrument.', 'writes on the board again.', 'then notices a little black and green poisonous frog sitting next to him.']
+Correct Answer: then notices a little black and green poisonous frog sitting next to him.
+Predicted Answer: writes on the board again.
+Correct: NO
+Scores: ['-35.330', '-78.644', '-28.462', '-69.477']
+
+Example 13:
+Input: He then takes the knife and sharpens it against the wood piece. He then notices a little black and green poisonous frog sitting next to him. the frog
+Choices: ['eventually gets to get up and marches out of the room waving its body about.', 'then starts to get up from the chair and begins walking towards the camera.', 'then escapes and jumps away.', 'is acting crazy and attacking him while he is cooking.']
+Correct Answer: then escapes and jumps away.
+Predicted Answer: then escapes and jumps away.
+Correct: YES
+Scores: ['-92.384', '-55.634', '-28.099', '-47.011']
+
+Example 14:
+Input: He then notices a little black and green poisonous frog sitting next to him. The frog then escapes and jumps away. he
+Choices: ['sits and hugs another man and also adjusts his camera.', 'then sits there staring at his text machine as if he has actually been given a gift from god.', 'explains how the frog secretes a poisonous fluid that can be extremely harmful.', 'takes the frog on his hand and tickles the back of it.']
+Correct Answer: explains how the frog secretes a poisonous fluid that can be extremely harmful.
+Predicted Answer: explains how the frog secretes a poisonous fluid that can be extremely harmful.
+Correct: YES
+Scores: ['-59.849', '-83.510', '-51.089', '-61.046']
+
+Example 15:
+Input: A person is playing bagpipes out in a park. A man and two boys watching from a far. the camera
+Choices: ['shoots areas all around the park while the bagpipes play.', 'is covered to the boy that is playing there.', 'then goes black and we see a black opening scene.', 'watching the boy and boy as they play a game of drums.']
+Correct Answer: shoots areas all around the park while the bagpipes play.
+Predicted Answer: is covered to the boy that is playing there.
+Correct: NO
+Scores: ['-60.545', '-51.729', '-66.276', '-61.472']
+
+Example 16:
+Input: Two people are seen passing a ball back and fourth in a pool and leads into one speaking to the camera. the man
+Choices: ['dips the ball and walks back with the boy and pours detergent into a cup again.', 'then throws the ball into the pool and begins running around with a sail in his hand while a group of men watch.', 'then takes a drink having a conversation with another man and another man leads into him throwing balls in the water and laughing to the camera.', 'demonstrates how to properly throw the ball with his hands while still speaking to the camera.']
+Correct Answer: demonstrates how to properly throw the ball with his hands while still speaking to the camera.
+Predicted Answer: demonstrates how to properly throw the ball with his hands while still speaking to the camera.
+Correct: YES
+Scores: ['-96.531', '-86.100', '-97.363', '-63.957']
+
+Example 17:
+Input: A woman is sitting at a table in a fast food restaurant while eating. She continually speaks to nobody as she eats. she
+Choices: ['is then seen sitting alone as she eats a cold brown ice cream.', 'pauses in the process of eating to enjoy her food.', 'stands up and grabs her purse, continuing to talk and laugh as she leaves.', 'picks up another chocolate bar and chews it as she talks.']
+Correct Answer: stands up and grabs her purse, continuing to talk and laugh as she leaves.
+Predicted Answer: pauses in the process of eating to enjoy her food.
+Correct: NO
+Scores: ['-62.695', '-47.371', '-62.435', '-59.244']
+
+Example 18:
+Input: A group of cheerleaders run onto a stage before a cheering audience. they
+Choices: ['get into formation, then begin dancing and flipping as male cheerleaders join them.', 'perform a cheer routine before the girls, along with makeup artists, spread out and pose.', 'take turns jumping on each other like they are performing karate.', 'are then shown performing the type of cheerleading dance, using batons and pole vaults.']
+Correct Answer: get into formation, then begin dancing and flipping as male cheerleaders join them.
+Predicted Answer: take turns jumping on each other like they are performing karate.
+Correct: NO
+Scores: ['-80.700', '-85.689', '-46.860', '-89.401']
+
+Example 19:
+Input: A group of cheerleaders run onto a stage before a cheering audience. They get into formation, then begin dancing and flipping as male cheerleaders join them. they all
+Choices: ['dance and flip on stage while hanging their hats on the sides.', 'continue dancing and flipping, doing hand springs.', 'dance together with flip up their sleeves.', 'perform their routines as the studio rashes to a halt with cheerleaders in the audience.']
+Correct Answer: continue dancing and flipping, doing hand springs.
+Predicted Answer: dance together with flip up their sleeves.
+Correct: NO
+Scores: ['-56.848', '-55.758', '-48.137', '-78.619']
+
+Example 20:
+Input: They get into formation, then begin dancing and flipping as male cheerleaders join them. They all continue dancing and flipping, doing hand springs. when they
+Choices: ["are done, they shake hands and walk away, but cheers are heard all around as they're finished.", 'are finished, they jump up and down happily and walk off the stage, exhausted.', 'are done, a male cheerleader is crowned and an instant replay is shown.', 'come down from their workout, they all stop to bow and applaud, then they continue dancing.']
+Correct Answer: are finished, they jump up and down happily and walk off the stage, exhausted.
+Predicted Answer: are finished, they jump up and down happily and walk off the stage, exhausted.
+Correct: YES
+Scores: ['-76.183', '-58.460', '-59.890', '-73.686']
+
+Example 21:
+Input: A woman is reading a newspaper nearby while he speaks to her and shows her something in his hand. The man sharpens his knives using an electric tool. he
+Choices: ['sharpens and cuts something on a knife board using an electric tool.', 'then continues cutting his onion.', 'travels with his knife under the table and uses it also in his shoe.', 'then shows her a spare knife that he has also used on a knife sharpener and drills into a side of the table.']
+Correct Answer: then continues cutting his onion.
+Predicted Answer: then continues cutting his onion.
+Correct: YES
+Scores: ['-50.062', '-37.445', '-61.695', '-89.070']
+
+Example 22:
+Input: A man is outside of a building. He is using commercial lawn mowing equipment. he
+Choices: ['walks back and forth as he mows the grass.', 'is animated as he does the task.', 'relaxes, making sure his lawn is pristine.', 'runs from one side of the building to the other.']
+Correct Answer: walks back and forth as he mows the grass.
+Predicted Answer: walks back and forth as he mows the grass.
+Correct: YES
+Scores: ['-31.407', '-39.217', '-54.438', '-32.010']
+
+Example 23:
+Input: Children bring desert out for their family member. the family
+Choices: ['floats in a river.', 'member stands looking into a hut and then handing people photographs.', 'member cuts a piece of sunscreen.', 'enjoys eating the desert together.']
+Correct Answer: enjoys eating the desert together.
+Predicted Answer: enjoys eating the desert together.
+Correct: YES
+Scores: ['-30.141', '-81.069', '-42.364', '-28.154']
+
+Example 24:
+Input: The family enjoys eating the desert together. The people in the restaurant laugh at the man and he wonders what they are doing. the man
+Choices: ["goes to the bathroom and isn't able to get very far.", 'puts the glass aside and a fourth person walks in and walks away.', 'plays the bagpipe and smiles and laughs as he enjoys the hospitality.', 'gets up and walks away to the other room.']
+Correct Answer: gets up and walks away to the other room.
+Predicted Answer: gets up and walks away to the other room.
+Correct: YES
+Scores: ['-46.210', '-61.251', '-57.218', '-31.515']
+
+Example 25:
+Input: A black female is shown in a room with a black scarf around her head. black spots on her faced
+Choices: ['are then zoomed in on and she begins to apply something on it.', 'are shown and she misses a little bit of her swing.', 'are shown and one finger is seen poking through.', 'are shown as she continues to dance around on the hardwood and every move makes a lash on her face.']
+Correct Answer: are then zoomed in on and she begins to apply something on it.
+Predicted Answer: are shown and one finger is seen poking through.
+Correct: NO
+Scores: ['-66.437', '-59.362', '-47.488', '-97.389']
+
+Example 26:
+Input: A black female is shown in a room with a black scarf around her head. Black spots on her faced are then zoomed in on and she begins to apply something on it. next
+Choices: [', she begins to brush her lips and make painted lips look just like a lipstick to the camera and ends with her closing gift and instruction showing her off at the end.', 'she is shown in various different locations and gets extremely close to a wall.', ', she is shown making multiple moans and sprays some kind of liquid down her face before hanging up.', ', she takes some spray and it makes her skin extremely oily and she continues to talk until the video is over.']
+Correct Answer: , she takes some spray and it makes her skin extremely oily and she continues to talk until the video is over.
+Predicted Answer: she is shown in various different locations and gets extremely close to a wall.
+Correct: NO
+Scores: ['-141.896', '-57.392', '-79.640', '-77.419']
+
+Example 27:
+Input: A helicopter flies in some people who then start playing paintball. they
+Choices: ['run around obstacles and have a great time.', 'lose their shirt during the fight and run back the others.', 'shoot at each other while the helicopter drone who am looking on.', 'chase a bird in the sky while others walk around.']
+Correct Answer: run around obstacles and have a great time.
+Predicted Answer: run around obstacles and have a great time.
+Correct: YES
+Scores: ['-36.147', '-63.645', '-69.395', '-52.936']
+
+Example 28:
+Input: A young boy and girl are standing over a sink with their mother talking. the mother
+Choices: ["is now putting lipstick on the boy's mouth and he tries to stop her but only gets a little bit stuck.", 'washes the boy while the child grabs shampoo.', 'shows some shaving cream on the boy who is scrubbing her brushes.', 'instructs them on how to brush their teeth while laughing.']
+Correct Answer: instructs them on how to brush their teeth while laughing.
+Predicted Answer: instructs them on how to brush their teeth while laughing.
+Correct: YES
+Scores: ['-87.837', '-55.359', '-60.061', '-48.301']
+
+Example 29:
+Input: A young boy and girl are standing over a sink with their mother talking. The mother instructs them on how to brush their teeth while laughing. the boy
+Choices: ['puts a shirt on and rubs his mouth.', 'helps his younger sister brush his teeth.', 'walks with an empty mouthwash cup on a sink floor.', 'and girl then begin working out.']
+Correct Answer: helps his younger sister brush his teeth.
+Predicted Answer: helps his younger sister brush his teeth.
+Correct: YES
+Scores: ['-36.695', '-27.893', '-67.172', '-36.097']
+
+Example 30:
+Input: The mother instructs them on how to brush their teeth while laughing. The boy helps his younger sister brush his teeth. she
+Choices: ['shows how to hit the mom and then kiss his dad as well.', 'brushes past the camera, looking better soon after.', 'glows from the center of the camera as a reaction.', 'gets them some water to gargle in their mouths.']
+Correct Answer: gets them some water to gargle in their mouths.
+Predicted Answer: gets them some water to gargle in their mouths.
+Correct: YES
+Scores: ['-68.558', '-67.725', '-54.204', '-48.654']
+
+Example 31:
+Input: She gets them some water to gargle in their mouths. The boy and girl begin playing in the sink. the woman
+Choices: ['shakes her head in disbelief and waves at her.', 'laughs at the children dribbling water.', 'comes back and talks to the boys.', 'gets some food out of the fridge and they continue playing together.']
+Correct Answer: laughs at the children dribbling water.
+Predicted Answer: comes back and talks to the boys.
+Correct: NO
+Scores: ['-54.950', '-44.646', '-32.488', '-57.110']
+
+Example 32:
+Input: A cat is sitting in a cat bed. It is licking its paw. it
+Choices: ['then wipes its paw on its ear.', 'crawls to the door.', "'s laying down about six inches away from the camera.", 'crawls on one foot to get closer to the camera.']
+Correct Answer: then wipes its paw on its ear.
+Predicted Answer: crawls to the door.
+Correct: NO
+Scores: ['-31.718', '-31.669', '-37.814', '-53.640']
+
+Example 33:
+Input: A man in brown jacket is pulling out an arrow from the target board, then he was talking to the camera, then he pull out his bow and started to use it with his bow to hit the target board, he fired his bows several times. the man
+Choices: ['played paper if and shoot the arrows to hit the target, then he hang from the board with his bow and arrow.', 'went to the target board and talked to the camera.', 'eventually throw the arrow, but it flew into the gravel is near the targets.', 'have his bow as he talk to the camera, he pulled it out to show how to put with its flex, tighten, and notch that was attached to his bow.']
+Correct Answer: went to the target board and talked to the camera.
+Predicted Answer: went to the target board and talked to the camera.
+Correct: YES
+Scores: ['-100.244', '-30.934', '-79.255', '-144.783']
+
+Example 34:
+Input: A man walks outside plugs his lawn mower in and gets ready to mow. he
+Choices: ['drives through the grass while drinking from a large cup of water and carrying his lawn mower.', 'walks off the porch and goes back inside.', 'starts mowing his lawn casually going over all the grass.', 'does this multiple times until a pale orange moon appears overhead.']
+Correct Answer: starts mowing his lawn casually going over all the grass.
+Predicted Answer: walks off the porch and goes back inside.
+Correct: NO
+Scores: ['-69.240', '-36.371', '-56.578', '-60.515']
+
+Example 35:
+Input: A man walks outside plugs his lawn mower in and gets ready to mow. He starts mowing his lawn casually going over all the grass. his dog
+Choices: ["comes outside and starts to follow him a little while he's closer to the house.", 'comes outside and takes a closer look at the man mowing, after he picks up the mower.', 'runs loose and feeds on his movements.', 'is having a seizure and starts to hop all over the lawn as he walks around.']
+Correct Answer: comes outside and starts to follow him a little while he's closer to the house.
+Predicted Answer: comes outside and starts to follow him a little while he's closer to the house.
+Correct: YES
+Scores: ['-60.204', '-61.098', '-64.111', '-60.609']
+
+Example 36:
+Input: He starts mowing his lawn casually going over all the grass. His dog comes outside and starts to follow him a little while he's closer to the house. the yard
+Choices: ['is slowly starting to look really really nice, once he is completely finished the yard looks great, nice and smooth.', 'is very neat and clean and very active under the circumstances.', 'gets mowed quicker by the dog.', 'eventually looks happy on the outside and appears to be going pretty happily.']
+Correct Answer: is slowly starting to look really really nice, once he is completely finished the yard looks great, nice and smooth.
+Predicted Answer: gets mowed quicker by the dog.
+Correct: NO
+Scores: ['-88.263', '-53.785', '-35.523', '-68.481']
+
+Example 37:
+Input: A sea is shown with a green forest on seashore. Blond man is standing in seashore and talking to the camera and surfing big waves on the sea. man
+Choices: ['is on ocean and swimming in white water snapping his head.', 'is snowboarding up in the sea.', 'is doing flips in the waters and on the rocks and he be water surfing.', 'is walking on seashore through a lot of people and talking to the camera and holding an award and talking about surfing the seashore.']
+Correct Answer: is walking on seashore through a lot of people and talking to the camera and holding an award and talking about surfing the seashore.
+Predicted Answer: is snowboarding up in the sea.
+Correct: NO
+Scores: ['-61.517', '-33.099', '-75.292', '-92.506']
+
+Example 38:
+Input: We see a bottle of face wash. we
+Choices: ['see a newspaper story.', 'see four cookies in a pan.', 'see a person holding face wash then putting it on their face.', 'see a tool on a table.']
+Correct Answer: see a person holding face wash then putting it on their face.
+Predicted Answer: see a newspaper story.
+Correct: NO
+Scores: ['-39.105', '-49.599', '-62.264', '-45.760']
+
+Example 39:
+Input: We see a person holding face wash then putting it on their face. They rinse the face and add the face wash with a brush. we
+Choices: ['see a closing title screen.', 'see a black screen with the credits.', 'see an illustration on how to add the wash using a brush.', 'then see a replay then the person putting the face wash on.']
+Correct Answer: see an illustration on how to add the wash using a brush.
+Predicted Answer: then see a replay then the person putting the face wash on.
+Correct: NO
+Scores: ['-55.260', '-56.433', '-61.713', '-54.150']
+
+Example 40:
+Input: A person is seen throwing plaster onto a wall while the camera follows the person close behind. the person
+Choices: ['continues throwing ingredients down and leads into a person kicking a dirty toilet.', 'gradually throws more and more onto the wall and the camera pans over the finished product.', 'then uses paper to spread it all over the wall followed by others putting paper through with the plaster.', 'is now seen putting wax all along the wall while still looking back to the camera.']
+Correct Answer: gradually throws more and more onto the wall and the camera pans over the finished product.
+Predicted Answer: is now seen putting wax all along the wall while still looking back to the camera.
+Correct: NO
+Scores: ['-91.124', '-75.896', '-81.815', '-70.166']
+
+Example 41:
+Input: More and more people begin talking and each of them has a bottle of sun screen and starts to squirt it on their arms in effort to protect their skin. a small blue bottle of the sun screen
+Choices: ['appears and then different people carry it to a table where they mix the liquid with a straw with a straw and take turns squirting the liquid into their skin.', 'appears near each of their hair as they continue to talk but no bottle at all appear.', 'is then shown and several more people begin talking about the product.', 'zooms in on sheers that they have on the floor.']
+Correct Answer: is then shown and several more people begin talking about the product.
+Predicted Answer: is then shown and several more people begin talking about the product.
+Correct: YES
+Scores: ['-110.482', '-79.947', '-57.608', '-72.395']
+
+Example 42:
+Input: A group of boys are standing in a room with many clear cups of beer on a table they are all standing around. the boys
+Choices: ['take a flute together and then begin to play the harmonica using it to play the tune.', 'begin to wrap red bow around the plastic cups, put bows on the bottoms _start_various objects on the foam covers and belongings to the floor.', 'talk, laugh and tease each other before beginning a game of beer pong across a long table using a triangle shaped array of clear cups.', 'all grab one and chug their contents of the cans.']
+Correct Answer: talk, laugh and tease each other before beginning a game of beer pong across a long table using a triangle shaped array of clear cups.
+Predicted Answer: all grab one and chug their contents of the cans.
+Correct: NO
+Scores: ['-79.741', '-179.173', '-129.781', '-62.507']
+
+Example 43:
+Input: The boys talk, laugh and tease each other before beginning a game of beer pong across a long table using a triangle shaped array of clear cups. one of the ping pongs
+Choices: ['is knocked upside down, which causes the other teens to give each other high fives.', 'tries to rise but dikes instead.', 'rush walks up in front of the boys, removes a small piece of paper from the bottom of the table, puts a hand on the machine and wrestles with buttons, turns the machine off and pushes a button inside to turn the game back on.', 'lands in the cup and one of the boys begins to drink the beer.']
+Correct Answer: lands in the cup and one of the boys begins to drink the beer.
+Predicted Answer: lands in the cup and one of the boys begins to drink the beer.
+Correct: YES
+Scores: ['-74.920', '-67.132', '-168.083', '-50.797']
+
+Example 44:
+Input: One of the ping pongs lands in the cup and one of the boys begins to drink the beer. the group
+Choices: ['of teens is sailing down the river with others sailing in the background.', 'gets up together and poses with their vests to celebrate.', 'continue to play beer pong when one final player is able to throw and land a ping pong ball while standing with his back to the cups at which point the boys celebrate, and laugh.', 'does a trick and the liquid is poured on a second table.']
+Correct Answer: continue to play beer pong when one final player is able to throw and land a ping pong ball while standing with his back to the cups at which point the boys celebrate, and laugh.
+Predicted Answer: does a trick and the liquid is poured on a second table.
+Correct: NO
+Scores: ['-60.067', '-60.879', '-151.332', '-56.704']
+
+Example 45:
+Input: There's a nbc news reporter wearing a red sweater and white shirt talking about dog grooming by scissor wizard a grooming company. the representative from the company
+Choices: ['is talking about the services they offer and how those dogs participate in dog shows.', 'speaks to a woman sitting on a colorful conference room chair next to a brown dog kennel in front of them.', 'tells viewers about a dog grooming company, itv with a website.', 'in grey sweater and black pants talks about the procedures on grooming dogs in life and techniques.']
+Correct Answer: is talking about the services they offer and how those dogs participate in dog shows.
+Predicted Answer: is talking about the services they offer and how those dogs participate in dog shows.
+Correct: YES
+Scores: ['-58.047', '-95.818', '-68.161', '-91.971']
+
+Example 46:
+Input: The representative from the company is talking about the services they offer and how those dogs participate in dog shows. a groomer
+Choices: ["is seen using shears to creatively trim the dog's hair and even dye it in colorful shades of red, green, yellow and blue.", 'is presenting cookies to the room with a loaf of bread.', 'shows crowd opinion for use as their garden service representative.', 'speaks to an older man about snow cleaning dogs and showing how it is flectious.']
+Correct Answer: is seen using shears to creatively trim the dog's hair and even dye it in colorful shades of red, green, yellow and blue.
+Predicted Answer: is presenting cookies to the room with a loaf of bread.
+Correct: NO
+Scores: ['-103.314', '-54.902', '-88.057', '-110.458']
+
+Example 47:
+Input: A woman tries to eat ice cream to a child, but the child refuses to eat the ice cream, then the woman eats the ice cream in the spoon. after
+Choices: [", the woman gives ice cream to the child, and then the woman cleans the child's mouth.", ', the child takes out the fork the other child takes out the spoon and eats the ice cream.', ', the child and the woman tries to eat food without ice cream, then they sit and talk with adults in the room.', ", two people wearing red shirts pass through the store's door and inside the market and besides a man and a chimpanzee wearing silver uniforms are watching the woman and child."]
+Correct Answer: , the woman gives ice cream to the child, and then the woman cleans the child's mouth.
+Predicted Answer: , the woman gives ice cream to the child, and then the woman cleans the child's mouth.
+Correct: YES
+Scores: ['-36.394', '-42.753', '-75.873', '-151.478']
+
+Example 48:
+Input: After, the woman gives ice cream to the child, and then the woman cleans the child's mouth. an old woman
+Choices: ['feeds a boy ice cream.', 'hold the child and eats the ice cream, after the woman is giving baby ice cream to the child.', 'tries to stop the mother pray while giving a baby something else.', 'is standing using a white blower to blow snow.']
+Correct Answer: feeds a boy ice cream.
+Predicted Answer: feeds a boy ice cream.
+Correct: YES
+Scores: ['-29.407', '-60.721', '-75.043', '-58.766']
+
+Example 49:
+Input: Men are lifting heavy weights over their head several times. A man in a blue shirt is watching one of the men. a man in a gray shirt
+Choices: ['is watching the men on the ground.', 'hits a big weight in slow motion.', 'is talking to one of the men in the middle of the gym.', 'is mimicking the person lifting the weight.']
+Correct Answer: is mimicking the person lifting the weight.
+Predicted Answer: is watching the men on the ground.
+Correct: NO
+Scores: ['-20.941', '-51.274', '-31.653', '-35.535']
+
+Example 50:
+Input: In home pet groomers demonstrate how to groom a pet. the person
+Choices: ['puts a setting engage on the pets tongue and leash.', 'starts at their butt rise, combing out the hair with a brush from a red.', "is demonstrating how the dog's hair is trimmed with electric shears at their grooming salon.", 'installs and interacts with a sleeping pet before moving away.']
+Correct Answer: is demonstrating how the dog's hair is trimmed with electric shears at their grooming salon.
+Predicted Answer: installs and interacts with a sleeping pet before moving away.
+Correct: NO
+Scores: ['-65.641', '-100.334', '-75.441', '-55.929']
+
+
+COMMONSENSE QA RESULTS
+------------------------------
+Example 1:
+Question: A revolving door is convenient for two direction travel, but it also serves as a security measure at a what?
+Choices: ['bank', 'library', 'department store', 'mall', 'new york']
+Correct Answer: bank
+Predicted Answer: department store
+Correct: NO
+Scores: ['-inf', '-inf', '-1.080', '-inf', '-3.215']
+
+Example 2:
+Question: What do people aim to do at work?
+Choices: ['complete job', 'learn from each other', 'kill animals', 'wear hats', 'talk to each other']
+Correct Answer: complete job
+Predicted Answer: complete job
+Correct: YES
+Scores: ['-3.457', '-7.018', '-6.157', '-5.061', '-5.868']
+
+Example 3:
+Question: Where would you find magazines along side many other printed works?
+Choices: ['doctor', 'bookstore', 'market', 'train station', 'mortuary']
+Correct Answer: bookstore
+Predicted Answer: train station
+Correct: NO
+Scores: ['-inf', '-inf', '-inf', '-1.926', '-2.478']
+
+Example 4:
+Question: Where are  you likely to find a hamburger?
+Choices: ['fast food restaurant', 'pizza', 'ground up dead cows', 'mouth', 'cow carcus']
+Correct Answer: fast food restaurant
+Predicted Answer: fast food restaurant
+Correct: YES
+Scores: ['-5.436', '-inf', '-15.898', '-inf', '-20.488']
+
+Example 5:
+Question: James was looking for a good place to buy farmland.  Where might he look?
+Choices: ['midwest', 'countryside', 'estate', 'farming areas', 'illinois']
+Correct Answer: midwest
+Predicted Answer: illinois
+Correct: NO
+Scores: ['-2.426', '-inf', '-inf', '-6.099', '-2.337']
+
+Example 6:
+Question: What island country is ferret popular?
+Choices: ['own home', 'north carolina', 'great britain', 'hutch', 'outdoors']
+Correct Answer: great britain
+Predicted Answer: great britain
+Correct: YES
+Scores: ['-6.359', '-10.051', '-4.392', '-9.946', '-inf']
+
+Example 7:
+Question: In what Spanish speaking North American country can you get a great cup of coffee?
+Choices: ["mildred's coffee shop", 'mexico', 'diner', 'kitchen', 'canteen']
+Correct Answer: mexico
+Predicted Answer: mexico
+Correct: YES
+Scores: ['-23.369', '-0.941', '-inf', '-inf', '-3.163']
+
+Example 8:
+Question: What do animals do when an enemy is approaching?
+Choices: ['feel pleasure', 'procreate', 'pass water', 'listen to each other', 'sing']
+Correct Answer: listen to each other
+Predicted Answer: procreate
+Correct: NO
+Scores: ['-10.054', '-5.925', '-9.118', '-7.748', '-inf']
+
+Example 9:
+Question: Reading newspaper one of many ways to practice your what?
+Choices: ['literacy', 'knowing how to read', 'money', 'buying', 'money bank']
+Correct Answer: literacy
+Predicted Answer: knowing how to read
+Correct: NO
+Scores: ['-inf', '-3.590', '-inf', '-inf', '-8.010']
+
+Example 10:
+Question: What do people typically do while playing guitar?
+Choices: ['cry', 'hear sounds', 'singing', 'arthritis', 'making music']
+Correct Answer: singing
+Predicted Answer: making music
+Correct: NO
+Scores: ['-inf', '-7.586', '-inf', '-inf', '-1.321']
+
+Example 11:
+Question: What would vinyl be an odd thing to replace?
+Choices: ['pants', 'record albums', 'record store', 'cheese', 'wallpaper']
+Correct Answer: wallpaper
+Predicted Answer: record albums
+Correct: NO
+Scores: ['-inf', '-5.333', '-5.449', '-inf', '-inf']
+
+Example 12:
+Question: If you want harmony, what is something you should try to do with the world?
+Choices: ['take time', 'make noise', 'make war', 'make peace', 'make haste']
+Correct Answer: make peace
+Predicted Answer: make peace
+Correct: YES
+Scores: ['-3.330', '-6.235', '-8.602', '-3.021', '-11.103']
+
+Example 13:
+Question: Where does a heifer's master live?
+Choices: ['farm house', 'barnyard', 'stockyard', 'slaughter house', 'eat cake']
+Correct Answer: farm house
+Predicted Answer: barnyard
+Correct: NO
+Scores: ['-4.803', '-1.815', '-3.430', '-3.449', '-6.726']
+
+Example 14:
+Question: Aside from water and nourishment what does your dog need?
+Choices: ['bone', 'charm', 'petted', 'lots of attention', 'walked']
+Correct Answer: lots of attention
+Predicted Answer: lots of attention
+Correct: YES
+Scores: ['-inf', '-inf', '-8.723', '-5.314', '-inf']
+
+Example 15:
+Question: Janet was watching the film because she liked what?
+Choices: ['erection', 'laughter', 'being entertained', 'fear', 'bordem']
+Correct Answer: being entertained
+Predicted Answer: being entertained
+Correct: YES
+Scores: ['-inf', '-inf', '-6.407', '-inf', '-16.535']
+
+Example 16:
+Question: What are you waiting alongside with when you're in a reception area?
+Choices: ['motel', 'chair', 'hospital', 'people', 'hotels']
+Correct Answer: people
+Predicted Answer: motel
+Correct: NO
+Scores: ['-inf', '-inf', '-inf', '-inf', '-inf']
+
+Example 17:
+Question: When drinking booze what can you do to stay busy?
+Choices: ['reach tentative agreement', 'stay in bed', 'stop bicycle', 'examine thing', 'suicide']
+Correct Answer: examine thing
+Predicted Answer: stay in bed
+Correct: NO
+Scores: ['-22.664', '-7.071', '-13.833', '-13.985', '-inf']
+
+Example 18:
+Question: A fencing thrust with a sharp sword towards a person would result in what?
+Choices: ['injury', 'small cuts', 'fever', 'competition', 'puncture wound']
+Correct Answer: puncture wound
+Predicted Answer: puncture wound
+Correct: YES
+Scores: ['-inf', '-4.434', '-inf', '-inf', '-4.105']
+
+Example 19:
+Question: Unlike a spider and his many sight seers, people only have what?
+Choices: ['tongues', 'names', 'brains', 'feelings', 'two eyes']
+Correct Answer: two eyes
+Predicted Answer: two eyes
+Correct: YES
+Scores: ['-inf', '-inf', '-inf', '-inf', '-1.922']
+
+Example 20:
+Question: Where do adults use glue sticks?
+Choices: ['classroom', 'desk drawer', 'at school', 'office', 'kitchen drawer']
+Correct Answer: office
+Predicted Answer: at school
+Correct: NO
+Scores: ['-inf', '-7.102', '-4.267', '-inf', '-9.856']
+
+Example 21:
+Question: What could go on top of wood?
+Choices: ['lumberyard', 'synagogue', 'floor', 'carpet', 'hardware store']
+Correct Answer: carpet
+Predicted Answer: hardware store
+Correct: NO
+Scores: ['-5.881', '-inf', '-inf', '-inf', '-3.764']
+
+Example 22:
+Question: The artist was sitting quietly pondering, then suddenly he began to paint when what struck him?
+Choices: ['sadness', 'anxiety', 'inspiration', 'discomfort', 'insights']
+Correct Answer: inspiration
+Predicted Answer: sadness
+Correct: NO
+Scores: ['-inf', '-inf', '-inf', '-inf', '-inf']
+
+Example 23:
+Question: Though the thin film seemed fragile, for it's intended purpose it was actually nearly what?
+Choices: ['indestructible', 'durable', 'undestroyable', 'indestructible', 'unbreakable']
+Correct Answer: indestructible
+Predicted Answer: unbreakable
+Correct: NO
+Scores: ['-3.719', '-inf', '-7.530', '-3.719', '-2.932']
+
+Example 24:
+Question: Where could you find a toilet that only friends can use?
+Choices: ['rest area', 'school', 'stadium', 'apartment', 'hospital']
+Correct Answer: apartment
+Predicted Answer: rest area
+Correct: NO
+Scores: ['-4.359', '-inf', '-inf', '-inf', '-inf']
+
+Example 25:
+Question: What is someone who isn't clever, bright, or competent called?
+Choices: ['clumsy', 'ineffectual', 'dull', 'clumsy', 'stupid']
+Correct Answer: stupid
+Predicted Answer: ineffectual
+Correct: NO
+Scores: ['-inf', '-11.241', '-inf', '-inf', '-inf']
+
+Example 26:
+Question: When wildlife reproduce we often refer to what comes out as what?
+Choices: ['raise children', 'have children', 'photo copy', 'offspring', 'accidently got pregnant somehow']
+Correct Answer: offspring
+Predicted Answer: raise children
+Correct: NO
+Scores: ['-5.997', '-6.797', '-8.594', '-inf', '-29.769']
+
+Example 27:
+Question: The weasel was becoming a problem, it kept getting into the chicken eggs kept in the what?
+Choices: ['forrest', 'barn', 'public office', 'out of doors', 'freezer']
+Correct Answer: barn
+Predicted Answer: out of doors
+Correct: NO
+Scores: ['-9.424', '-inf', '-9.838', '-6.539', '-inf']
+
+Example 28:
+Question: Blue read material outside of his comfort zone because he wanted to gain what?
+Choices: ['new perspective', 'entertained', 'understanding', 'hunger', 'tired eyes']
+Correct Answer: new perspective
+Predicted Answer: tired eyes
+Correct: NO
+Scores: ['-8.808', '-inf', '-inf', '-inf', '-3.521']
+
+Example 29:
+Question: After he got hired he hoped for success at his what?
+Choices: ['vocation', 'new job', 'michigan', 'working hard', 'manual']
+Correct Answer: new job
+Predicted Answer: new job
+Correct: YES
+Scores: ['-7.908', '-1.528', '-7.749', '-3.308', '-inf']
+
+Example 30:
+Question: Committing perjury is a serious what?
+Choices: ['indictment', 'crime', 'violence', 'lie', 'go to jail']
+Correct Answer: crime
+Predicted Answer: go to jail
+Correct: NO
+Scores: ['-inf', '-inf', '-inf', '-inf', '-7.141']
+
+Example 31:
+Question: If you are prone to postpone work what will you have to do in order to finish on time?
+Choices: ['eat', 'hasten', 'antedate', 'bring forward', 'advance']
+Correct Answer: hasten
+Predicted Answer: hasten
+Correct: YES
+Scores: ['-inf', '-0.826', '-17.629', '-8.278', '-inf']
+
+Example 32:
+Question: James wanted to find an old underground map from the 50s.  Where might he look for one?
+Choices: ['library', 'subway station', "county engineer's office", 'super market', 'home']
+Correct Answer: library
+Predicted Answer: subway station
+Correct: NO
+Scores: ['-inf', '-3.829', '-17.902', '-9.550', '-inf']
+
+Example 33:
+Question: Sean was in a rush to get home, but the light turned yellow and he was forced to do what?
+Choices: ['take time', 'dawdle', 'go slowly', 'ocean', 'slow down']
+Correct Answer: slow down
+Predicted Answer: slow down
+Correct: YES
+Scores: ['-4.296', '-6.454', '-8.276', '-inf', '-0.948']
+
+Example 34:
+Question: Where would a person be doing when having to wait their turn?
+Choices: ['have patience', 'get in line', 'sing', 'stand in line', 'turn left']
+Correct Answer: stand in line
+Predicted Answer: stand in line
+Correct: YES
+Scores: ['-6.124', '-7.436', '-inf', '-3.077', '-5.374']
+
+Example 35:
+Question: She was always helping at the senior center, it brought her what?
+Choices: ['satisfaction', 'heart', 'feel better', 'pay', 'happiness']
+Correct Answer: happiness
+Predicted Answer: feel better
+Correct: NO
+Scores: ['-inf', '-inf', '-4.487', '-inf', '-inf']
+
+Example 36:
+Question: The lock kept the steering wheel from moving, but the thief still took his chances and began to work on the what?
+Choices: ['keep cloesd', 'train', 'ignition switch', 'drawer', 'firearm']
+Correct Answer: ignition switch
+Predicted Answer: ignition switch
+Correct: YES
+Scores: ['-29.667', '-inf', '-2.547', '-inf', '-inf']
+
+Example 37:
+Question: Who is a police officer likely to work for?
+Choices: ['beat', 'direct traffic', 'city', 'street', 'president']
+Correct Answer: city
+Predicted Answer: direct traffic
+Correct: NO
+Scores: ['-inf', '-6.713', '-inf', '-inf', '-inf']
+
+Example 38:
+Question: If you have leftover cake, where would you put it?
+Choices: ['quandry', 'refrigerator', 'oven', 'night stand', 'bakery']
+Correct Answer: refrigerator
+Predicted Answer: night stand
+Correct: NO
+Scores: ['-8.237', '-inf', '-inf', '-5.371', '-inf']
+
+Example 39:
+Question: A human wants to submerge himself in water, what should he use?
+Choices: ['whirlpool bath', 'coffee cup', 'cup', 'soft drink', 'puddle']
+Correct Answer: whirlpool bath
+Predicted Answer: soft drink
+Correct: NO
+Scores: ['-4.694', '-8.801', '-inf', '-4.085', '-6.681']
+
+Example 40:
+Question: Where is a doormat likely to be in front of?
+Choices: ['facade', 'front door', 'doorway', 'entrance porch', 'hallway']
+Correct Answer: front door
+Predicted Answer: front door
+Correct: YES
+Scores: ['-inf', '-1.359', '-inf', '-4.981', '-inf']
+
+Example 41:
+Question: Bob the lizard lives in a warm place with lots of water.  Where does he probably live?
+Choices: ['rock', 'tropical rainforest', 'jazz club', 'new mexico', 'rocky places']
+Correct Answer: tropical rainforest
+Predicted Answer: tropical rainforest
+Correct: YES
+Scores: ['-inf', '-2.240', '-7.512', '-10.002', '-2.379']
+
+Example 42:
+Question: August needed  money because he was afraid that he'd be kicked out of his house.  What did he need money to do?
+Choices: ['control people', 'pay bills', 'hurt people', 'buy food', 'get things']
+Correct Answer: pay bills
+Predicted Answer: buy food
+Correct: NO
+Scores: ['-7.490', '-3.103', '-5.475', '-2.726', '-6.125']
+
+Example 43:
+Question: He needed more information to fix it, so he consulted the what?
+Choices: ['chickens', 'google', 'newspaper', 'online', 'manual']
+Correct Answer: manual
+Predicted Answer: chickens
+Correct: NO
+Scores: ['-inf', '-inf', '-inf', '-inf', '-inf']
+
+Example 44:
+Question: Where can you put a picture frame when it's not hung vertically?
+Choices: ['art show', 'wall', 'newspaper', 'car', 'table']
+Correct Answer: table
+Predicted Answer: art show
+Correct: NO
+Scores: ['-9.609', '-inf', '-inf', '-inf', '-inf']
+
+Example 45:
+Question: James knew that he shouldn't have been buying beer for minors.  He didn't even get paid for it.  Why was this bad?
+Choices: ['lose money', 'fun', 'have no money', 'broken law', 'relaxation']
+Correct Answer: broken law
+Predicted Answer: lose money
+Correct: NO
+Scores: ['-2.816', '-inf', '-7.709', '-5.081', '-inf']
+
+Example 46:
+Question: What is the result of applying for  job?
+Choices: ['anxiety and fear', 'increased workload', 'praise', 'less sleep', 'being employed']
+Correct Answer: being employed
+Predicted Answer: being employed
+Correct: YES
+Scores: ['-5.078', '-4.589', '-inf', '-8.816', '-4.500']
+
+Example 47:
+Question: What must someone do before they shop?
+Choices: ['get money', 'have money', 'bring cash', 'go to market', 'bring cash']
+Correct Answer: get money
+Predicted Answer: bring cash
+Correct: NO
+Scores: ['-9.042', '-6.824', '-4.368', '-7.538', '-4.368']
+
+Example 48:
+Question: Because John was first violin, he had to bring something important to work ever day. What did he need to bring to work?
+Choices: ['music store', 'obesity', 'symphony orchestra', 'ochestra', 'violin case']
+Correct Answer: violin case
+Predicted Answer: symphony orchestra
+Correct: NO
+Scores: ['-7.822', '-inf', '-1.682', '-15.338', '-4.379']
+
+Example 49:
+Question: What is a place that usually does not have an elevator and that sometimes has a telephone book?
+Choices: ['at hotel', 'kitchen', 'library', 'telephone booth', 'house']
+Correct Answer: house
+Predicted Answer: telephone booth
+Correct: NO
+Scores: ['-11.001', '-inf', '-inf', '-8.153', '-inf']
+
+Example 50:
+Question: Who is likely to be excited about a crab?
+Choices: ['fish market', 'pet shop', 'fishmongers', 'intertidal zone', 'obesity']
+Correct Answer: fishmongers
+Predicted Answer: fishmongers
+Correct: YES
+Scores: ['-7.515', '-6.432', '-5.382', '-10.508', '-inf']
+
+
+INSTRUCTION FOLLOWING RESULTS
+------------------------------
+Example 1:
+Instruction: What is the capital of France?
+Generated Response: The capital of France is Paris.<|endoftext|>
+Quality Assessment: Good
+
+Example 2:
+Instruction: Name three colors.
+Generated Response: Red, Orange, and Yellow.<|endoftext|>
+Quality Assessment: Good
+
+Example 3:
+Instruction: What is 2 + 2?
+Generated Response: 2 + 2 is equivalent to 2.<|endoftext|>
+Quality Assessment: Poor
+
+Example 4:
+Instruction: Explain what photosynthesis is in one sentence.
+Generated Response: Photosynthesis is an important process that is involved in the production of oxygen, energy, and food. It occurs in plants and animals in the form of chlorophyll, which is a green pigment that is converted into sugar by sunlight.<|endoftext|>
+Quality Assessment: Good
+
+Example 5:
+Instruction: List two benefits of exercise.
+Generated Response: Exercise is a form of physical activity that has many benefits. It can help reduce stress, improve mood, and increase energy levels. Exercise also helps to improve sleep, reduce inflammation, and reduce the risk of certain diseases.<|endoftext|>
+Quality Assessment: Good
+
+Example 6:
+Instruction: What shape is the Earth?
+Generated Response: The earth is round in shape with a diameter of about 5100 kilometers.<|endoftext|>
+Quality Assessment: Good
+
+Example 7:
+Instruction: How many days are in a week?
+Generated Response: The answer is two.<|endoftext|>
+Quality Assessment: Poor
+
+Example 8:
+Instruction: Name a type of fruit.
+Generated Response: Fruit.<|endoftext|>
+Quality Assessment: Poor
+
+Example 9:
+Instruction: What do bees make?
+Generated Response: Bees make their honey by gathering nectar from flowers such as nasturtiums, pygmy aster, and the like. They also collect pollen, nectar, and other materials found in flowers such as berries, intelligence, and insects
+Quality Assessment: Good
+
+Example 10:
+Instruction: What is the opposite of hot?
+Generated Response: The opposite of hot is cool.<|endoftext|>
+Quality Assessment: Poor
+

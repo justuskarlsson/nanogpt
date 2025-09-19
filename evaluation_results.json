@@ -1,0 +1,9 @@
+{
+  "instruction_following_accuracy": 0.6,
+  "hellaswag_accuracy": 0.46,
+  "hellaswag_correct": 23,
+  "hellaswag_total": 50,
+  "commonsense_qa_accuracy": 0.36,
+  "commonsense_qa_correct": 18,
+  "commonsense_qa_total": 50
+}
