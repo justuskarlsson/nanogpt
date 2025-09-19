@@ -119,10 +119,10 @@ def main():
     
     # Configuration
     args = Hyperparameters()
-    learning_rate = 1e-5  # Lower LR for more stable training
+    learning_rate = 0.5/100
     num_epochs = 2
     save_every = 1000
-    eval_every = 500
+    eval_every = 100
     
     # Find latest checkpoint
     checkpoint_path = None
@@ -174,14 +174,18 @@ def main():
     print_with_timestamp(f"📊 Training batches: {len(train_loader)}")
     print_with_timestamp(f"📊 Evaluation batches: {len(eval_loader)}")
     
+    # Initialize distributed for single GPU (required for Muon optimizer)
+    import torch.distributed as dist
+    import os
+    os.environ["RANK"] = "0"
+    os.environ["WORLD_SIZE"] = "1" 
+    os.environ["LOCAL_RANK"] = "0"
+    dist.init_process_group(backend="nccl", rank=0, world_size=1)
+    
     # Setup optimizers (same as pretraining)
     from model import setup_optimizers
-    optimizers = setup_optimizers(model, rank=0, world_size=1)
-    
-    # Override learning rates for finetuning
-    for opt in optimizers:
-        for group in opt.param_groups:
-            group["lr"] = group["initial_lr"] * (learning_rate / 0.025)  # Scale relative to Muon's base LR
+    optimizers = setup_optimizers(model, rank=0, world_size=1, f=learning_rate)
+
     
     # Training loop
     model.train()
@@ -242,7 +246,7 @@ def main():
                 print_with_timestamp(f"Epoch {epoch + 1}, Step {step_in_epoch}/{total_steps_in_epoch} (Global {step}): Loss = {loss.item():.4f}, GPU: {allocated:.1f}GB allocated, {reserved:.1f}GB reserved")
             
             # Periodic evaluation
-            if step % eval_every == 0:
+            if step % eval_every == 0 or step == 1:
                 eval_loss = evaluate_model(model, eval_loader, tokenizer)
                 print_with_timestamp(
                     f"Step {step}: Train Loss = {loss.item():.4f}, "
@@ -250,7 +254,7 @@ def main():
                 )
                 
                 # Generate sample responses
-                if step % (eval_every * 2) == 0:
+                if step % (eval_every * 2) == 0 or step == 1:
                     print_with_timestamp("🧪 Sample generations:")
                     for i, prompt in enumerate(test_prompts[:1]):  # Just one sample
                         response = generate_sample_response(model, tokenizer, prompt)

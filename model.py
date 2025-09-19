@@ -616,7 +616,7 @@ def create_model(vocab_size: int = 50257, max_seq_len: int = 256 * 1024) -> GPT:
     )
 
 
-def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
+def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1, f: float = 0.5):
     """Setup optimizers for the model."""
     hidden_matrix_params = [
         p
@@ -627,7 +627,6 @@ def setup_optimizers(model: GPT, rank: int = 0, world_size: int = 1):
     scalar_params = [p for p in model.parameters() if p.ndim < 2]
     head_params: list[nn.Parameter] = [model.lm_head.weight]
 
-    f = 0.5
     # init the optimizer(s)
     adam_param_groups = [
         dict(params=head_params, lr=f * 0.11),

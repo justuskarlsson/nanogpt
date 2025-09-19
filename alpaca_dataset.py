@@ -15,7 +15,7 @@ from typing import List, Dict, Tuple
 class AlpacaDataset(Dataset):
     """Dataset for fine-tuning on Alpaca instruction-following data with proper masking."""
 
-    def __init__(self, tokenizer, max_length: int = None, split: str = "train", limit: int = None):
+    def __init__(self, tokenizer: AutoTokenizer, max_length: int = None, split: str = "train", limit: int = None):
         self.tokenizer = tokenizer
         self.max_length = max_length
         
@@ -50,8 +50,8 @@ class AlpacaDataset(Dataset):
         else:
             prompt = f"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:\n"
         
-        # Combine prompt and response
-        full_text = prompt + output
+        # Combine prompt and response with EOS token
+        full_text = prompt + output + self.tokenizer.eos_token
         
         # Tokenize the full text
         full_tokens = self.tokenizer.encode(full_text, add_special_tokens=True)
@@ -77,7 +77,6 @@ class AlpacaDataset(Dataset):
         if response_start < len(labels):
             for i in range(response_start, len(labels)):
                 labels[i] = target_tokens[i]
-        
         # Only pad if max_length is specified
         if self.max_length is not None:
             pad_length = self.max_length - 1 - len(input_tokens)  # -1 for the shift
@@ -99,11 +98,7 @@ class AlpacaDataset(Dataset):
         example = self.examples[idx]
         input_ids = example["input_ids"]
         labels = example["labels"]
-        
-        # Add EOS token at the end for document separation
-        input_ids = input_ids + [self.tokenizer.eos_token_id]
-        labels = labels + [self.tokenizer.eos_token_id]
-        
+
         return (
             torch.tensor(input_ids, dtype=torch.long),
             torch.tensor(labels, dtype=torch.long)
