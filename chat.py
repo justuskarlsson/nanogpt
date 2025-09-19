@@ -112,7 +112,7 @@ def main():
     print("\nExample: What is the capital of France?")
     print("-" * 50)
 
-    temperature = 0.8
+    temperature = 0.3
 
     # Add system instruction to the beginning
     system_instruction = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
