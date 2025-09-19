@@ -99,6 +99,10 @@ class AlpacaDataset(Dataset):
         input_ids = example["input_ids"]
         labels = example["labels"]
 
+        # Add EOS token at the end for FlexAttention document delineation
+        input_ids = input_ids + [self.tokenizer.eos_token_id]
+        labels = labels + [self.tokenizer.eos_token_id]
+
         return (
             torch.tensor(input_ids, dtype=torch.long),
             torch.tensor(labels, dtype=torch.long)

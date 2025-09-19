@@ -196,7 +196,9 @@ def main():
     # Sample prompts for testing
     test_prompts = [
         "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nWhat is the capital of France?\n\n### Response:\n",
-        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nExplain photosynthesis in simple terms.\n\n### Response:\n"
+        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nExplain photosynthesis in simple terms.\n\n### Response:\n",
+        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nWhat is the shape of the Earth?\n\n### Response:\n",
+        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nWho was Einstein?\n\n### Response:\n",
     ]
     
     for epoch in range(num_epochs):
@@ -250,13 +252,13 @@ def main():
                 eval_loss = evaluate_model(model, eval_loader, tokenizer)
                 print_with_timestamp(
                     f"Step {step}: Train Loss = {loss.item():.4f}, "
-                    f"Eval Loss = {eval_loss:.4f}"
+                    f"Eval Loss = {eval_loss:.6f}"
                 )
                 
                 # Generate sample responses
                 if step % (eval_every * 2) == 0 or step == 1:
                     print_with_timestamp("🧪 Sample generations:")
-                    for i, prompt in enumerate(test_prompts[:1]):  # Just one sample
+                    for i, prompt in enumerate(test_prompts):  # Just one sample
                         response = generate_sample_response(model, tokenizer, prompt)
                         print(f"  Prompt {i+1}: {prompt.split('### Response:')[0].split('### Instruction:')[1].strip()}")
                         print(f"  Response: {response.strip()}")

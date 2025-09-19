@@ -471,11 +471,23 @@ class GPT(nn.Module):
         logits = 30 * torch.sigmoid(logits / (7.5 * x.size(-1) ** 0.5))
         if target_seq is None:
             return logits
-        loss = F.cross_entropy(
-            logits.view(-1, logits.size(-1)),
-            target_seq,
-            reduction="sum" if self.training else "mean",
-        )
+        # Compute loss with increased weight for EOS tokens
+        flat_logits = logits.view(-1, logits.size(-1))
+        flat_targets = target_seq.view(-1)
+
+        # Standard cross entropy loss
+        losses = F.cross_entropy(flat_logits, flat_targets, reduction="none")
+
+        # Increase loss weight for EOS tokens (token id 50256 for GPT-2)
+        eos_token_id = 50256  # GPT-2 EOS token
+        eos_mask = (flat_targets == eos_token_id)
+        losses = torch.where(eos_mask, losses * 1.8, losses)  # 3x weight for EOS
+
+        if self.training:
+            loss = losses.sum()
+        else:
+            loss = losses.mean()
+
         return loss
 
 
